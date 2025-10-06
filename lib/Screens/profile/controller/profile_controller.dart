@@ -7,12 +7,12 @@ import 'package:image_picker/image_picker.dart';
  import '../../../core/data/api_client/api_client.dart';
 
 // Models
+import '../../../core/data/api_constant/api_constant.dart';
 import '../model/profile_models.dart';
 
 // Direct API access (no repository)
 
 class ProfileController extends GetxController {
-  // Remove repo concept; use ApiClient directly
   final ApiClient _api = ApiClient();
 
   final loading = false.obs;
@@ -23,6 +23,7 @@ class ProfileController extends GetxController {
   final userPhone = ''.obs;
   final employeeId = ''.obs;
   final role = 'employee'.obs;
+  final avatarUrl = RxnString(); // Add this for server avatar URL
 
   final pickedImagePath = RxnString(); // preview path
   File? get pickedImageFile =>
@@ -46,9 +47,10 @@ class ProfileController extends GetxController {
       final res = ProfileResponse.fromJson(map);
       profile = res;
 
-      final name = res.data.employee.name.isNotEmpty
-          ? res.data.employee.name
-          : res.data.user.name;
+      // Prioritize user name over employee name (as it seems more updated)
+      final name = res.data.user.name.isNotEmpty
+          ? res.data.user.name
+          : res.data.employee.name;
 
       userName.value = name;
       userEmail.value = res.data.employee.email ?? res.data.user.email;
@@ -56,9 +58,14 @@ class ProfileController extends GetxController {
       employeeId.value = res.data.employee.employeeId ?? '';
       role.value = res.data.user.type ?? 'employee';
 
+      // Set avatar URL from server
+      avatarUrl.value = res.data.user.avatar?.isNotEmpty == true
+          ? '${ApiConstants.baseurl}/storage/${res.data.user.avatar}'
+          : null;
+
       print('[Profile] loadProfile() mapped fields: '
           'name="$name", email="${userEmail.value}", phone="${userPhone.value}", '
-          'employeeId="${employeeId.value}", role="${role.value}"');
+          'employeeId="${employeeId.value}", role="${role.value}", avatar="${avatarUrl.value}"');
     } catch (e, st) {
       print('[Profile] loadProfile() -> ERROR: $e\n$st');
       Get.snackbar('Error', 'Failed to load profile');
@@ -67,6 +74,57 @@ class ProfileController extends GetxController {
       print('[Profile] loadProfile() -> end');
     }
   }
+
+  Future<void> submitUpdate() async {
+    loading.value = true;
+    final name = userName.value.trim();
+    final email = userEmail.value.trim();
+    final imgPath = pickedImagePath.value;
+
+    print('[Profile] submitUpdate() -> start');
+    print('[Profile] submitUpdate() payload: name="$name", email="$email", '
+        'image=${imgPath == null ? 'null' : imgPath}');
+
+    try {
+      final map = await _api.updateProfileMultipart(
+        name: name.isNotEmpty ? name : null,
+        email: email.isNotEmpty ? email : null,
+        profileImage: pickedImageFile,
+      );
+
+      print('[Profile] submitUpdate() -> API success');
+      final res = ProfileResponse.fromJson(map);
+      profile = res;
+
+      // Update with latest data from server
+      final newName = res.data.user.name.isNotEmpty
+          ? res.data.user.name
+          : res.data.employee.name;
+
+      userName.value = newName;
+      userEmail.value = res.data.employee.email ?? res.data.user.email;
+
+      // Update avatar URL if changed
+      avatarUrl.value = res.data.user.avatar?.isNotEmpty == true
+          ? '${ApiConstants.baseurl}/storage/${res.data.user.avatar}'
+          : null;
+
+      // Clear picked image since it's now uploaded
+      pickedImagePath.value = null;
+
+      print('[Profile] submitUpdate() -> mapped new fields: '
+          'name="$newName", email="${userEmail.value}", avatar="${avatarUrl.value}"');
+
+      Get.snackbar('Success', 'Profile updated');
+    } catch (e, st) {
+      print('[Profile] submitUpdate() -> ERROR: $e\n$st');
+      Get.snackbar('Error', 'Update failed');
+    } finally {
+      loading.value = false;
+      print('[Profile] submitUpdate() -> end');
+    }
+  }
+
 
   Future<void> pickImage() async {
     print('[Profile] pickImage() -> opening gallery');
@@ -87,47 +145,6 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<void> submitUpdate() async {
-    loading.value = true;
-    final name = userName.value.trim();
-    final email = userEmail.value.trim();
-    final imgPath = pickedImagePath.value;
-
-    print('[Profile] submitUpdate() -> start');
-    print('[Profile] submitUpdate() payload: name="$name", email="$email", '
-        'image=${imgPath == null ? 'null' : imgPath}');
-
-    try {
-      final map = await _api.updateProfileMultipart(
-        name: name,
-        email: email,
-        profileImage: pickedImageFile,
-      );
-
-      print('[Profile] submitUpdate() -> API success');
-      final res = ProfileResponse.fromJson(map);
-      profile = res;
-
-      final newName = res.data.employee.name.isNotEmpty
-          ? res.data.employee.name
-          : res.data.user.name;
-
-      userName.value = newName;
-      userEmail.value = res.data.employee.email ?? res.data.user.email;
-
-      pickedImagePath.value = null;
-      print('[Profile] submitUpdate() -> mapped new fields: '
-          'name="$newName", email="${userEmail.value}"');
-
-      Get.snackbar('Success', 'Profile updated');
-    } catch (e, st) {
-      print('[Profile] submitUpdate() -> ERROR: $e\n$st');
-      Get.snackbar('Error', 'Update failed');
-    } finally {
-      loading.value = false;
-      print('[Profile] submitUpdate() -> end');
-    }
-  }
 
   Future<void> performLogout(BuildContext context) async {
     loading.value = true;

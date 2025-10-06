@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:starcapitalventures/app_export/app_export.dart';
+import 'package:starcapitalventures/core/utils/styles/size_utils.dart';
+import 'package:starcapitalventures/core/utils/appTheme/app_theme.dart';
 
 class LoadingService extends GetxService {
   static LoadingService get to => Get.find();
@@ -24,7 +25,7 @@ class LoadingService extends GetxService {
     if (context != null) {
       _overlayEntry = OverlayEntry(
         builder: (context) => _LoadingOverlay(
-          message: message,
+          message: message ?? 'Loading...',
           color: color,
           backgroundColor: backgroundColor,
         ),
@@ -59,34 +60,77 @@ class LoadingService extends GetxService {
       rethrow;
     }
   }
+
+  // Static method to return widget for direct use in build methods
+  static Widget widget({
+    String? message,
+    Color? color,
+    Color? backgroundColor,
+  }) {
+    return _LoadingOverlay(
+      message: message ?? 'Loading...',
+      color: color,
+      backgroundColor: backgroundColor,
+    );
+  }
 }
 
 // Private overlay widget
-class _LoadingOverlay extends StatelessWidget {
-  final String? message;
+class _LoadingOverlay extends StatefulWidget {
+  final String message;
   final Color? color;
   final Color? backgroundColor;
 
   const _LoadingOverlay({
-    this.message,
+    required this.message,
     this.color,
     this.backgroundColor,
   });
 
   @override
+  State<_LoadingOverlay> createState() => _LoadingOverlayState();
+}
+
+class _LoadingOverlayState extends State<_LoadingOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat();
+
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Material(
-      color: backgroundColor ?? Colors.black.withOpacity(0.3),
+      color: widget.backgroundColor ?? Colors.black.withOpacity(0.5),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: getPadding(all: 20),
+          margin: getPadding(left: 40, right: 40),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
+                blurRadius: 15,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -94,27 +138,28 @@ class _LoadingOverlay extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    color ??appTheme.theme2,
+              RotationTransition(
+                turns: _animation,
+                child: SizedBox(
+                  width: getHorizontalSize(40),
+                  height: getHorizontalSize(40),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      widget.color ?? appTheme.mintygreen ?? const Color(0xFF3FC2A2),
+                    ),
                   ),
                 ),
               ),
-              if (message != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  message!,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
+              SizedBox(height: getVerticalSize(16)),
+              Text(
+                widget.message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF1A2036),
                 ),
-              ],
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),

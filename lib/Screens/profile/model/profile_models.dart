@@ -34,7 +34,7 @@ class User {
   final String name;
   final String email;
   final String? type;
-  final String? avatar;
+  final String? avatar; // Make sure this exists
 
   User({
     required this.id,

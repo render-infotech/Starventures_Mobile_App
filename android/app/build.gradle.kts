@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    id("kotlin-kapt")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -44,6 +45,16 @@ flutter {
 }
 
 dependencies {
+
     implementation(files("libs/geosentry_sdk-release.aar"))
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+    implementation ("androidx.core:core:1.6.0")
+    implementation ("com.google.code.gson:gson:2.8.9")
+    implementation("androidx.room:room-ktx:2.5.2")
+    implementation("androidx.room:room-runtime:2.5.2")
+    kapt("androidx.room:room-compiler:2.5.2")
+    implementation ("androidx.work:work-runtime-ktx:2.9.0")
+
+
 }

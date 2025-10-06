@@ -83,6 +83,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         clipBehavior: Clip.antiAlias,
                         alignment: Alignment.center,
+                        child: _buildAvatarImage(context, pickedPath, initials),
+                      ),
+
+                      /*
+                      child: Container(
+                        width: getHorizontalSize(96),
+                        height: getHorizontalSize(96),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2E2E2E),
+                          shape: BoxShape.circle,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        alignment: Alignment.center,
                         child: pickedPath != null && pickedPath.isNotEmpty
                             ? Image.file(
                           File(pickedPath),
@@ -99,6 +112,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ),
+
+                       */
                     ),
                     SizedBox(height: getVerticalSize(12)),
                     Text(
@@ -315,4 +330,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     });
   }
+  Widget _buildAvatarImage(BuildContext context, String? pickedPath, String initials) {
+    // Priority: 1. Picked local image, 2. Server avatar, 3. Initials
+    if (pickedPath != null && pickedPath.isNotEmpty) {
+      return Image.file(
+        File(pickedPath),
+        fit: BoxFit.cover,
+        width: getHorizontalSize(96),
+        height: getHorizontalSize(96),
+      );
+    }
+
+    if (_controller.avatarUrl.value != null && _controller.avatarUrl.value!.isNotEmpty) {
+      return Image.network(
+        _controller.avatarUrl.value!,
+        fit: BoxFit.cover,
+        width: getHorizontalSize(96),
+        height: getHorizontalSize(96),
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback to initials if network image fails
+          return Text(
+            initials.isEmpty ? ' ' : initials,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: getFontSize(22),
+            ),
+          );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          );
+        },
+      );
+    }
+
+    // Default to initials
+    return Text(
+      initials.isEmpty ? ' ' : initials,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
+        fontSize: getFontSize(22),
+      ),
+    );
+  }
+
 }

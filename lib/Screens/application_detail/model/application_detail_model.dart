@@ -1,127 +1,120 @@
 import 'package:flutter/material.dart';
 
+import 'dart:convert';
 import '../../applications/model/application_model.dart';
 
-class ApplicationDetail {
-  ApplicationDetail({
-    required this.header,
-    required this.progress,
-    required this.documents,
-    required this.activities,
+class ApplicationDetailResponse {
+  final ApplicationDetailData data;
+
+  ApplicationDetailResponse({
+    required this.data,
   });
 
-  final ApplicationHeader header;
-  final List<ProgressStep> progress;
-  final List<UploadDoc> documents;
-  final List<ActivityItem> activities;
-
-  factory ApplicationDetail.fromJson(Map<String, dynamic> j) {
-    return ApplicationDetail(
-      header: ApplicationHeader.fromJson(j['header'] as Map<String, dynamic>),
-      progress: (j['progress'] as List<dynamic>)
-          .map((e) => ProgressStep.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      documents: (j['documents'] as List<dynamic>)
-          .map((e) => UploadDoc.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      activities: (j['activities'] as List<dynamic>)
-          .map((e) => ActivityItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
+  factory ApplicationDetailResponse.fromJson(Map<String, dynamic> json) {
+    return ApplicationDetailResponse(
+      data: ApplicationDetailData.fromJson(json['data'] ?? {}),
     );
   }
 }
 
-class ApplicationHeader {
-  ApplicationHeader({
-    required this.name,
-    required this.loanType,
-    required this.amount,
-    required this.status,
-    required this.appId,
-    required this.appliedDate,
-    required this.monthlyIncome,
-    required this.creditScore,
-  });
-
-  final String name;
+class ApplicationDetailData {
+  final String id;
+  final String customerName;
+  final String email;
+  final String phone;
+  final double loanAmount;
   final String loanType;
-  final int amount;
-  final ApplicationStatus status;
-  final String appId;
-  final DateTime appliedDate;
-  final int monthlyIncome;
-  final int creditScore;
+  final String status;
+  final double monthlyIncome;
+  final AssignedTo? assignedTo;
+  final CreatedBy? createdBy;
+  final String? notes;
+  final String? aadhaarFileUrl;
+  final String? panCardFileUrl;
+  final String? payslipFileUrl;
+  final String? bankStatementFileUrl;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  factory ApplicationHeader.fromJson(Map<String, dynamic> j) {
-    return ApplicationHeader(
-      name: j['name'] as String,
-      loanType: j['loanType'] as String,
-      amount: j['amount'] as int,
-      status: ApplicationStatus.values.firstWhere(
-            (e) => e.name == (j['status'] as String),
-        orElse: () => ApplicationStatus.processing,
-      ),
-      appId: j['appId'] as String,
-      appliedDate: DateTime.parse(j['appliedDate'] as String),
-      monthlyIncome: j['monthlyIncome'] as int,
-      creditScore: j['creditScore'] as int,
-    );
-  }
-}
-
-// Define your custom enum once
-enum ProgressState { complete, active, pending, indexed }
-
-class ProgressStep {
-  ProgressStep({
-    required this.index,
-    required this.title,
-    required this.subtitle,
-    required this.state,
+  ApplicationDetailData({
+    required this.id,
+    required this.customerName,
+    required this.email,
+    required this.phone,
+    required this.loanAmount,
+    required this.loanType,
+    required this.status,
+    required this.monthlyIncome,
+    this.assignedTo,
+    this.createdBy,
+    this.notes,
+    this.aadhaarFileUrl,
+    this.panCardFileUrl,
+    this.payslipFileUrl,
+    this.bankStatementFileUrl,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  final int index;
-  final String title;
-  final String subtitle;
-  final ProgressState state; // <- use ProgressState
-
-  factory ProgressStep.fromJson(Map<String, dynamic> j) {
-    return ProgressStep(
-      index: j['index'] as int,
-      title: j['title'] as String,
-      subtitle: j['subtitle'] as String,
-      state: ProgressState.values.firstWhere(
-            (e) => e.name == (j['state'] as String),
-        orElse: () => ProgressState.indexed,
-      ),
+  factory ApplicationDetailData.fromJson(Map<String, dynamic> json) {
+    return ApplicationDetailData(
+      id: json['id']?.toString() ?? '',
+      customerName: json['customer_name'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
+      loanAmount: double.tryParse(json['loan_amount']?.toString() ?? '0') ?? 0.0,
+      loanType: json['loan_type'] ?? '',
+      status: json['status'] ?? '',
+      monthlyIncome: double.tryParse(json['monthly_income']?.toString() ?? '0') ?? 0.0,
+      assignedTo: json['assigned_to'] != null ? AssignedTo.fromJson(json['assigned_to']) : null,
+      createdBy: json['created_by'] != null ? CreatedBy.fromJson(json['created_by']) : null,
+      notes: json['notes'],
+      aadhaarFileUrl: json['aadhaar_file_url'],
+      panCardFileUrl: json['pan_card_file_url'],
+      payslipFileUrl: json['payslip_file_url'],
+      bankStatementFileUrl: json['bank_statement_file_url'],
+      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
     );
   }
-}
 
-class UploadDoc {
-  UploadDoc({required this.name, required this.uploaded});
-  final String name;
-  final bool uploaded;
-
-  factory UploadDoc.fromJson(Map<String, dynamic> j) {
-    return UploadDoc(
-      name: j['name'] as String,
-      uploaded: j['uploaded'] as bool,
-    );
+  // Helper method to get status enum
+  ApplicationStatus get statusEnum {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return ApplicationStatus.approved;
+      case 'rejected':
+        return ApplicationStatus.rejected;
+      case 'pending':
+        return ApplicationStatus.pending;
+      default:
+        return ApplicationStatus.processing;
+    }
   }
-}
 
-class ActivityItem {
-  ActivityItem({required this.title, required this.subtitle, required this.time});
-  final String title;
-  final String subtitle;
-  final DateTime time;
+  // Helper method to get formatted amount
+  String get formattedAmount {
+    return '₹${_formatINR(loanAmount.toInt())}';
+  }
 
-  factory ActivityItem.fromJson(Map<String, dynamic> j) {
-    return ActivityItem(
-      title: j['title'] as String,
-      subtitle: j['subtitle'] as String,
-      time: DateTime.parse(j['time'] as String),
-    );
+  // Helper method to get formatted monthly income
+  String get formattedMonthlyIncome {
+    return '₹${_formatINR(monthlyIncome.toInt())}';
+  }
+
+  // Format as Indian currency
+  String _formatINR(int amount) {
+    final s = amount.toString();
+    if (s.length <= 3) return s;
+    final last3 = s.substring(s.length - 3);
+    String rest = s.substring(0, s.length - 3);
+    final buf = StringBuffer();
+    while (rest.length > 2) {
+      buf.write('${rest.substring(rest.length - 2)},');
+      rest = rest.substring(0, rest.length - 2);
+    }
+    if (rest.isNotEmpty) buf.write(rest);
+    final commas = buf.toString().split('').reversed.join();
+    return '$commas,$last3';
   }
 }

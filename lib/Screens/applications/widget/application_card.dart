@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:starcapitalventures/core/utils/styles/size_utils.dart';
 import 'package:starcapitalventures/core/utils/styles/custom_border_radius.dart';
+import 'package:intl/intl.dart';
 import '../model/application_model.dart';
 
-class ApplicationCard extends StatelessWidget {
-  const ApplicationCard({super.key, required this.item});
-  final ApplicationItem item;
+class ApplicationApiCard extends StatelessWidget {
+  const ApplicationApiCard({super.key, required this.application});
+  final Application application;
 
   @override
   Widget build(BuildContext context) {
-    final number = item.amount;
-    final displayAmount = _formatINR(number);
-
-    final (chipLabel, chipBg, chipFg) = _statusChip(item.status);
+    final (chipLabel, chipBg, chipFg) = _statusChip(application.statusEnum);
+    final formattedDate = DateFormat('MMM dd, yyyy').format(application.createdAt);
 
     return Container(
       margin: getMargin(bottom: 12),
@@ -35,7 +34,7 @@ class ApplicationCard extends StatelessWidget {
             width: getHorizontalSize(6),
             height: getVerticalSize(110),
             decoration: BoxDecoration(
-              color: item.accentColor,
+              color: _getAccentColor(application.statusEnum),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 bottomLeft: Radius.circular(16),
@@ -55,7 +54,7 @@ class ApplicationCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          item.applicantName,
+                          application.customerName, // Using customerName from API
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF1A2036),
@@ -71,11 +70,12 @@ class ApplicationCard extends StatelessWidget {
 
                   SizedBox(height: getVerticalSize(6)),
 
-                  // Loan type • amount
+                  // Loan type and amount
                   Text(
-                    '${item.loanType} • ₹$displayAmount',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    '${application.loanType} • ${application.formattedAmount}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.black87,
+                      fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -83,9 +83,9 @@ class ApplicationCard extends StatelessWidget {
 
                   SizedBox(height: getVerticalSize(10)),
 
-                  // Applied ago • App ID
+                  // Created date • App ID
                   Text(
-                    '${item.appliedAgo} • App ID: ${item.appId}',
+                    'Applied on $formattedDate • ID: ${application.id}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.black45,
                     ),
@@ -101,24 +101,21 @@ class ApplicationCard extends StatelessWidget {
     );
   }
 
-  // Formats as 5,00,000 style (Indian grouping)
-  String _formatINR(int amount) {
-    final s = amount.toString();
-    if (s.length <= 3) return s;
-    final last3 = s.substring(s.length - 3);
-    String rest = s.substring(0, s.length - 3);
-    final buf = StringBuffer();
-    while (rest.length > 2) {
-      buf.write('${rest.substring(rest.length - 2)},');
-      rest = rest.substring(0, rest.length - 2);
+  Color _getAccentColor(ApplicationStatus status) {
+    switch (status) {
+      case ApplicationStatus.processing:
+        return const Color(0xFF4F8BFF);
+      case ApplicationStatus.approved:
+        return const Color(0xFF22A16B);
+      case ApplicationStatus.pending:
+        return const Color(0xFFFFC85C);
+      case ApplicationStatus.rejected:
+        return const Color(0xFFFF8080);
     }
-    if (rest.isNotEmpty) buf.write(rest);
-    final commas = buf.toString().split('').reversed.join();
-    return '$commas,$last3';
   }
 
-  (String, Color, Color) _statusChip(ApplicationStatus st) {
-    switch (st) {
+  (String, Color, Color) _statusChip(ApplicationStatus status) {
+    switch (status) {
       case ApplicationStatus.processing:
         return ('PROCESSING', const Color(0xFFE7F0FF), const Color(0xFF4F8BFF));
       case ApplicationStatus.approved:
