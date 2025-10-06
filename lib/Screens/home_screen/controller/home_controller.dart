@@ -5,15 +5,8 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/data/api_client/api_client.dart';
-import '../../../core/utils/custom_snackbar.dart';
-import '../model/dashboard_model.dart';
-
-// lib/Screens/home_screen/controller/home_controller.dart
-
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../core/data/api_client/api_client.dart';
 import '../../../core/utils/custom_snackbar.dart';
 import '../model/dashboard_model.dart';
@@ -25,11 +18,6 @@ class HomeController extends GetxController {
   // Loading states
   var loading = false.obs;
   var dashboardLoading = false.obs;
-
-  // Permission state
-  var hasLocationAlwaysPermission = false.obs;
-  var permissionRequested = false.obs;
-  var currentPermissionStatus = PermissionStatus.denied.obs;
 
   // Dashboard data
   var dashboardData = Rx<DashboardData?>(null);
@@ -46,450 +34,6 @@ class HomeController extends GetxController {
     super.onInit();
     fetchDashboardData();
   }
-
-  @override
-  void onReady() {
-    super.onReady();
-    // Request permission after the UI is ready
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _requestLocationPermissionOnAppStart();
-    });
-  }
-
-  /// Request location permission immediately when app starts with proper error handling
-  Future<void> _requestLocationPermissionOnAppStart() async {
-    if (permissionRequested.value) {
-      return; // Already requested in this session
-    }
-
-    try {
-      print('=== App Start - Requesting Location Permission ===');
-
-      // Check current permission status safely
-      await _updatePermissionStatus();
-
-      if (hasLocationAlwaysPermission.value) {
-        print('✅ Already have "Allow all time" permission');
-        return;
-      }
-
-      // Mark as requested to avoid multiple requests
-      permissionRequested.value = true;
-
-      // Show permission dialog immediately
-      final shouldRequest = await _showAppStartPermissionDialog();
-      if (!shouldRequest) {
-        print('❌ User declined permission request on app start');
-        return;
-      }
-
-      await _handlePermissionRequest();
-
-    } catch (e) {
-      print('❌ Error requesting permission on app start: $e');
-      // Don't crash the app, just log the error
-      hasLocationAlwaysPermission.value = false;
-    }
-  }
-
-  /// Safely update permission status without crashing
-  Future<void> _updatePermissionStatus() async {
-    try {
-      final locationAlwaysStatus = await Permission.locationAlways.status;
-      currentPermissionStatus.value = locationAlwaysStatus;
-      hasLocationAlwaysPermission.value = locationAlwaysStatus.isGranted;
-
-      print('Current permission status: $locationAlwaysStatus');
-    } catch (e) {
-      print('Error checking permission status: $e');
-      hasLocationAlwaysPermission.value = false;
-      currentPermissionStatus.value = PermissionStatus.denied;
-    }
-  }
-
-  /// Handle permission request with proper error handling
-  Future<void> _handlePermissionRequest() async {
-    try {
-      // Request basic location permission first
-      final locationStatus = await Permission.location.status;
-      if (!locationStatus.isGranted) {
-        final locationResult = await Permission.location.request();
-        if (!locationResult.isGranted) {
-          print('❌ Basic location permission denied');
-          await _showPermissionDeniedDialog();
-          return;
-        }
-      }
-
-      // Request "Always" permission with error handling
-      try {
-        final alwaysResult = await Permission.locationAlways.request();
-        await _updatePermissionStatus();
-
-        if (alwaysResult.isGranted) {
-          print('✅ Location Always permission granted on app start');
-          CustomSnackbar.show(
-            Get.context!,
-            title: "Permission Granted",
-            message: "Location tracking enabled for attendance",
-          );
-        } else {
-          print('❌ Location Always permission not granted: $alwaysResult');
-          await _handlePermissionDenied(alwaysResult);
-        }
-      } catch (permissionError) {
-        print('❌ Error requesting Always permission: $permissionError');
-        await _showPermissionErrorDialog();
-      }
-
-    } catch (e) {
-      print('❌ Error in permission request flow: $e');
-      await _showPermissionErrorDialog();
-    }
-  }
-
-  /// Handle different permission denied scenarios
-  Future<void> _handlePermissionDenied(PermissionStatus status) async {
-    switch (status) {
-      case PermissionStatus.denied:
-        await _showWhileUsingAppSelectedDialog();
-        break;
-      case PermissionStatus.permanentlyDenied:
-        await _showPermanentlyDeniedDialog();
-        break;
-      case PermissionStatus.restricted:
-        await _showRestrictedPermissionDialog();
-        break;
-      default:
-        await _showAlwaysPermissionFailedDialog();
-    }
-  }
-
-  /// Show dialog when user selects "While using app" instead of "Allow all time"
-  Future<void> _showWhileUsingAppSelectedDialog() async {
-    await Get.dialog(
-      AlertDialog(
-        title: const Text('Insufficient Permission'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'You selected "While using the app" but attendance tracking requires "Allow all the time" permission.',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 12),
-            Text('Without "Allow all the time" permission:'),
-            Text('• Clock in/out may not work properly'),
-            Text('• Location tracking will be limited'),
-            Text('• Attendance accuracy may be reduced'),
-            SizedBox(height: 12),
-            Text(
-              'You can change this in Settings > Permissions > Location',
-              style: TextStyle(color: Colors.blue, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Continue Anyway'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Get.back();
-              await openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-  }
-
-  /// Show permission error dialog
-  Future<void> _showPermissionErrorDialog() async {
-    await Get.dialog(
-      AlertDialog(
-        title: const Text('Permission Error'),
-        content: const Text(
-          'There was an error requesting location permission. Some features may not work properly.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('OK'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Get.back();
-              await openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Show restricted permission dialog
-  Future<void> _showRestrictedPermissionDialog() async {
-    await Get.dialog(
-      AlertDialog(
-        title: const Text('Permission Restricted'),
-        content: const Text(
-          'Location permission is restricted by your device settings (possibly parental controls). Please check your device settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Simplified and crash-safe clock in method
-  Future<bool> performClockIn(BuildContext context) async {
-    loading.value = true;
-
-    try {
-      print('=== Starting Clock In Process ===');
-
-      // Refresh permission status before proceeding
-      await _updatePermissionStatus();
-
-      // Check if we have the required permission
-      if (!hasLocationAlwaysPermission.value) {
-        print('❌ No "Allow all time" permission available');
-
-        CustomSnackbar.show(
-          context,
-          title: "Permission Required",
-          message: "Clock-in requires 'Allow all time' location permission",
-        );
-
-        final shouldOpenSettings = await _showClockInPermissionDialog(context);
-        if (shouldOpenSettings) {
-          await openAppSettings();
-        }
-        return false;
-      }
-
-      print('✅ "Allow all time" permission confirmed');
-
-      // Proceed with clock in API call
-      final response = await apiClient.clockIn();
-      print('Clock In API Response: $response');
-
-      if (response is Map<String, dynamic> &&
-          response['status'] == true &&
-          response.containsKey('geosentry')) {
-
-        final geosentry = response['geosentry'];
-        final String userId = geosentry['user_id'] ?? '';
-        final String apiKey = geosentry['api_key'] ?? '';
-        final String cipherKey = geosentry['ciper_key'] ?? '';
-
-        print('=== Geosentry SDK Initialization (Safe) ===');
-
-        try {
-          // Initialize SDK with error handling
-          await _initializeGeosentrySDKSafe(apiKey, cipherKey, userId);
-
-          await fetchDashboardData();
-
-          CustomSnackbar.show(
-            context,
-            title: "Clock In Successful",
-            message: "You have successfully clocked in with location tracking",
-          );
-          return true;
-
-        } catch (sdkError) {
-          print('Geosentry SDK initialization failed: $sdkError');
-
-          // Don't crash, show error and allow basic clock in
-          CustomSnackbar.show(
-            context,
-            title: "Clock In Completed",
-            message: "Clocked in successfully but location tracking may be limited",
-          );
-
-          // Still refresh dashboard
-          await fetchDashboardData();
-          return true; // Return true for basic clock in success
-        }
-      }
-
-      CustomSnackbar.show(
-        context,
-        title: "Clock In Failed",
-        message: "Server error occurred. Please try again.",
-      );
-      return false;
-
-    } catch (err) {
-      print('Clock In Error: $err');
-      CustomSnackbar.show(
-        context,
-        title: "Clock In Failed",
-        message: "Failed to clock in. Please try again.",
-      );
-      return false;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  /// Safe SDK initialization with comprehensive error handling
-  Future<void> _initializeGeosentrySDKSafe(String apiKey, String cipherKey, String userID) async {
-    try {
-      print('=== Initializing Geosentry SDK (Safe Mode) ===');
-
-      // Double-check permission before SDK initialization
-      final currentStatus = await Permission.locationAlways.status;
-      if (!currentStatus.isGranted) {
-        throw PlatformException(
-          code: 'PERMISSION_NOT_GRANTED',
-          message: 'Allow all time permission not granted',
-        );
-      }
-
-      print('Calling platform method: initializeSDK');
-
-      // Call SDK initialization with timeout
-      final result = await platform.invokeMethod('initializeSDK', {
-        'apiKey': apiKey,
-        'cipherKey': cipherKey,
-        'userID': userID,
-      }).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw PlatformException(
-            code: 'TIMEOUT',
-            message: 'SDK initialization timed out',
-          );
-        },
-      );
-
-      print('Platform method result: $result');
-
-      // Handle result safely
-      if (result is Map) {
-        final success = result['success'] ?? false;
-        final errorMessage = result['errormessage'] ?? '';
-
-        if (!success) {
-          throw PlatformException(
-            code: 'SDK_INIT_FAILED',
-            message: 'Geosentry SDK initialization failed',
-            details: errorMessage,
-          );
-        }
-      }
-
-      print('✅ Geosentry SDK initialization SUCCESS');
-
-    } catch (e) {
-      print('❌ Geosentry SDK initialization FAILED: $e');
-
-      // Log the error but don't crash the app
-      if (e is PlatformException) {
-        print('Platform Exception Code: ${e.code}');
-        print('Platform Exception Message: ${e.message}');
-        print('Platform Exception Details: ${e.details}');
-      }
-
-      // Re-throw to be handled by calling method
-      rethrow;
-    }
-  }
-
-  /// Show dialog for clock-in permission issue
-  Future<bool> _showClockInPermissionDialog(BuildContext context) async {
-    final result = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Location Permission Required'),
-        content: const Text(
-          'To clock in, please enable "Allow all the time" location permission in app settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-    return result ?? false;
-  }
-
-  /// Show permission dialog on app start
-  Future<bool> _showAppStartPermissionDialog() async {
-    final result = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Location Permission Required'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'This app requires location access for accurate attendance tracking.',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 12),
-            Text('⚠️ Important: Please select "Allow all the time" for:'),
-            Text('• Accurate attendance tracking'),
-            Text('• Location-based clock in/out'),
-            Text('• Compliance monitoring'),
-            SizedBox(height: 12),
-            Text(
-              'Selecting "While using the app" will cause limited functionality.',
-              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Not Now'),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            child: const Text('Grant Permission'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-    return result ?? false;
-  }
-
-  // Rest of your existing methods remain the same...
-  // (fetchDashboardData, _updateClockState, clockButtonText, etc.)
-
-  // Get assigned leads count
-  int get assignedLeads => dashboardData.value?.assignedLeads ?? 0;
-
-  // Get assigned applications count
-  int get assignedApplications => dashboardData.value?.assignedApplications ?? 0;
-
-  // Get converted leads count
-  int get convertedLeads => dashboardData.value?.convertedLeads ?? 0;
-
-  // Refresh dashboard data
-  Future<void> refreshDashboard() async {
-    await fetchDashboardData();
-  }
-
 
   // Fetch dashboard data
   Future<void> fetchDashboardData() async {
@@ -610,6 +154,7 @@ class HomeController extends GetxController {
     return "${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}";
   }
 
+
   // Clock Out method
   Future<bool> performClockOut(BuildContext context) async {
     loading.value = true;
@@ -639,7 +184,22 @@ class HomeController extends GetxController {
     }
   }
 
-  // Initialize Geosentry SDK using MethodChannel with proper result checking
+  // Get assigned leads count
+  int get assignedLeads => dashboardData.value?.assignedLeads ?? 0;
+
+  // Get assigned applications count
+  int get assignedApplications => dashboardData.value?.assignedApplications ?? 0;
+
+  // Get converted leads count
+  int get convertedLeads => dashboardData.value?.convertedLeads ?? 0;
+
+  // Refresh dashboard data
+  Future<void> refreshDashboard() async {
+    await fetchDashboardData();
+  }
+
+
+// Initialize Geosentry SDK using MethodChannel with proper result checking
   Future<void> _initializeGeosentrySDK(String apiKey, String cipherKey, String userID) async {
     try {
       print('=== Initializing Geosentry SDK ===');
@@ -706,61 +266,214 @@ class HomeController extends GetxController {
     }
   }
 
-  // Dialog when Always permission fails
-  Future<void> _showAlwaysPermissionFailedDialog() async {
-    await Get.dialog(
-      AlertDialog(
-        title: const Text('Permission Required'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'The app requires "Allow all the time" location permission.',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 12),
-            Text('To enable attendance tracking:'),
-            Text('1. Go to App Settings'),
-            Text('2. Select Permissions > Location'),
-            Text('3. Choose "Allow all the time"'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Later'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Get.back();
-              await openAppSettings();
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
+  // Clock Out method (unchanged)
+
+  // Debug method to manually test SDK initialization
+  Future<void> testGeosentrySDK() async {
+    // Test values - replace with actual values for testing
+    await _initializeGeosentrySDK(
+        'test_api_key',
+        'test_cipher_key',
+        'test_user_id'
     );
   }
 
-  // Permission denied dialog
-  Future<void> _showPermissionDeniedDialog() async {
-    await Get.dialog(
+
+
+// Enhanced location permission check - only called during clock in
+// Enhanced location permission check - forces "Allow all the time" permission
+  Future<bool> _checkLocationPermission(BuildContext context) async {
+    try {
+      print('=== Checking Location Permission ===');
+
+      // Step 1: Check if we already have "Always" permission
+      final locationAlwaysStatus = await Permission.locationAlways.status;
+      print('Location Always permission status: $locationAlwaysStatus');
+
+      if (locationAlwaysStatus.isGranted) {
+        print('✅ Location Always permission already granted');
+        return true;
+      }
+
+      // Step 2: Check basic location permissions first
+      final locationStatus = await Permission.location.status;
+      print('Location permission status: $locationStatus');
+
+      // Handle permanently denied case
+      if (locationStatus.isPermanentlyDenied || locationAlwaysStatus.isPermanentlyDenied) {
+        print('❌ Location permission permanently denied');
+        await _showPermanentlyDeniedDialog(context);
+        return false;
+      }
+
+      // Step 3: Request basic location permission first (required for Android 10+)
+      if (locationStatus.isDenied) {
+        final shouldRequest = await _showInitialPermissionDialog(context);
+        if (!shouldRequest) {
+          print('❌ User declined initial permission request');
+          return false;
+        }
+
+        // Request basic location permission
+        final locationResult = await Permission.location.request();
+        print('Basic location permission result: $locationResult');
+
+        if (!locationResult.isGranted) {
+          print('❌ Basic location permission denied');
+          await _showPermissionDeniedDialog(context);
+          return false;
+        }
+      }
+
+      // Step 4: Now request "Always" permission with clear explanation
+      final shouldRequestAlways = await _showAlwaysPermissionDialog(context);
+      if (!shouldRequestAlways) {
+        print('❌ User declined Always permission request');
+        await _showSDKRequirementDialog(context);
+        return false;
+      }
+
+      // Request "Always" location permission
+      final alwaysResult = await Permission.locationAlways.request();
+      print('Location Always permission result: $alwaysResult');
+
+      if (alwaysResult.isGranted) {
+        print('✅ Location Always permission granted');
+        return true;
+      } else {
+        print('❌ Location Always permission not granted');
+        await _showAlwaysPermissionFailedDialog(context);
+        return false;
+      }
+
+    } catch (e) {
+      print('❌ Error checking location permission: $e');
+      CustomSnackbar.show(
+        context,
+        title: "Permission Error",
+        message: "Failed to check location permission: ${e.toString()}",
+      );
+      return false;
+    }
+  }
+
+// Updated performClockIn method - permission check only happens here
+  Future<bool> performClockIn(BuildContext context) async {
+    loading.value = true;
+
+    try {
+      // Check location permission ONLY when user tries to clock in
+      print('=== Starting Clock In Process ===');
+      final hasPermission = await _checkLocationPermission(context);
+
+      if (!hasPermission) {
+        print('❌ Clock in cancelled - no location permission');
+        CustomSnackbar.show(
+          context,
+          title: "Permission Required",
+          message: "Location permission is needed to clock in",
+        );
+        return false;
+      }
+
+      // Proceed with clock in API call
+      final response = await apiClient.clockIn();
+      print('Clock In API Response: $response');
+
+      if (response is Map<String, dynamic> &&
+          response['status'] == true &&
+          response.containsKey('geosentry')) {
+
+        final geosentry = response['geosentry'];
+        final String userId = geosentry['user_id'] ?? '';
+        final String apiKey = geosentry['api_key'] ?? '';
+        final String cipherKey = geosentry['ciper_key'] ?? '';
+
+        print('=== Geosentry SDK Initialization ===');
+        print('User ID: $userId');
+        print('API Key: $apiKey');
+        print('Cipher Key: $cipherKey');
+
+        try {
+          // Initialize Geosentry SDK
+          await _initializeGeosentrySDK(apiKey, cipherKey, userId);
+
+          // Refresh dashboard data
+          await fetchDashboardData();
+
+          CustomSnackbar.show(
+            context,
+            title: "Clock In Successful",
+            message: "You have successfully clocked in with location tracking",
+          );
+          return true;
+
+        } catch (sdkError) {
+          print('Geosentry SDK initialization failed: $sdkError');
+
+          // Still refresh data but show warning
+          await fetchDashboardData();
+
+          CustomSnackbar.show(
+            context,
+            title: "Clock In Partially Successful",
+            message: "Clocked in but location tracking unavailable",
+          );
+          return true;
+        }
+      } else {
+        print('Warning: Geosentry data not found in response');
+        await fetchDashboardData();
+
+        CustomSnackbar.show(
+          context,
+          title: "Clock In Successful",
+          message: "You have successfully clocked in",
+        );
+        return true;
+      }
+
+    } catch (err) {
+      print('Clock In Error: $err');
+
+      String errorMessage = "Failed to clock in. Please try again.";
+      if (err.toString().contains("already clocked in")) {
+        errorMessage = "You have already clocked in for the day";
+      }
+
+      CustomSnackbar.show(
+        context,
+        title: "Clock In Failed",
+        message: errorMessage,
+      );
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Show explanation dialog before requesting permission
+  Future<bool> _showPermissionExplanationDialog(BuildContext context) async {
+    final result = await Get.dialog<bool>(
       AlertDialog(
-        title: const Text('Location Permission Denied'),
+        title: const Text('Location Permission Required'),
         content: const Text(
-          'Location access is required for attendance tracking. Please grant location permission to continue.',
+          'This app needs access to your location for accurate clock in/out functionality and attendance tracking. Your location data is used only for work-related purposes.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('OK'),
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Grant Permission'),
           ),
         ],
       ),
       barrierDismissible: false,
     );
+    return result ?? false;
   }
 
   // Show dialog to open app settings for permanently denied permission
@@ -769,7 +482,7 @@ class HomeController extends GetxController {
       AlertDialog(
         title: const Text('Location Permission Required'),
         content: const Text(
-          'Please enable "Allow all the time" location permission in app settings to use attendance tracking.',
+          'Location permission is permanently denied. Please enable it in app settings to use clock in/out functionality.',
         ),
         actions: [
           TextButton(
@@ -790,13 +503,6 @@ class HomeController extends GetxController {
   }
 
 
-  // Debug method to manually test SDK initialization
-  Future<void> testGeosentrySDK() async {
-    // Test values - replace with actual values for testing
-    await _initializeGeosentrySDK(
-        'test_api_key',
-        'test_cipher_key',
-        'test_user_id'
-    );
-  }
+
+
 }
