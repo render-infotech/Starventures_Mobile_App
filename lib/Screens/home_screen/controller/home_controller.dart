@@ -281,70 +281,64 @@ class HomeController extends GetxController {
 
 
 // Enhanced location permission check - only called during clock in
-// Enhanced location permission check - forces "Allow all the time" permission
   Future<bool> _checkLocationPermission(BuildContext context) async {
     try {
       print('=== Checking Location Permission ===');
 
-      // Step 1: Check if we already have "Always" permission
+      // Check current permission status
+      final locationStatus = await Permission.location.status;
       final locationAlwaysStatus = await Permission.locationAlways.status;
-      print('Location Always permission status: $locationAlwaysStatus');
 
-      if (locationAlwaysStatus.isGranted) {
-        print('✅ Location Always permission already granted');
+      print('Location permission status: $locationStatus');
+      print('Location always permission status: $locationAlwaysStatus');
+
+      // If any location permission is already granted, proceed
+      if (locationStatus.isGranted || locationAlwaysStatus.isGranted) {
+        print('✅ Location permission already granted');
         return true;
       }
-
-      // Step 2: Check basic location permissions first
-      final locationStatus = await Permission.location.status;
-      print('Location permission status: $locationStatus');
 
       // Handle permanently denied case
-      if (locationStatus.isPermanentlyDenied || locationAlwaysStatus.isPermanentlyDenied) {
+      if (locationStatus.isPermanentlyDenied) {
         print('❌ Location permission permanently denied');
-        await _showPermanentlyDeniedDialog(context);
+        await _showPermissionSettingsDialog(context);
         return false;
       }
 
-      // Step 3: Request basic location permission first (required for Android 10+)
+      // For denied status, show explanation and request permission
       if (locationStatus.isDenied) {
-        final shouldRequest = await _showInitialPermissionDialog(context);
+        final shouldRequest = await _showPermissionExplanationDialog(context);
         if (!shouldRequest) {
-          print('❌ User declined initial permission request');
+          print('❌ User declined permission request');
           return false;
         }
 
-        // Request basic location permission
-        final locationResult = await Permission.location.request();
-        print('Basic location permission result: $locationResult');
+        // Request location permissions
+        final results = await [
+          Permission.location,
+          Permission.locationWhenInUse,
+        ].request();
 
-        if (!locationResult.isGranted) {
-          print('❌ Basic location permission denied');
-          await _showPermissionDeniedDialog(context);
+        print('Permission request results: $results');
+
+        // Check if any permission was granted
+        final hasAnyLocationPermission = results.values.any((status) => status.isGranted);
+
+        if (hasAnyLocationPermission) {
+          print('✅ Location permission granted');
+          return true;
+        } else {
+          print('❌ All location permissions denied');
+          CustomSnackbar.show(
+            context,
+            title: "Permission Required",
+            message: "Location permission is required for clock in functionality",
+          );
           return false;
         }
       }
 
-      // Step 4: Now request "Always" permission with clear explanation
-      final shouldRequestAlways = await _showAlwaysPermissionDialog(context);
-      if (!shouldRequestAlways) {
-        print('❌ User declined Always permission request');
-        await _showSDKRequirementDialog(context);
-        return false;
-      }
-
-      // Request "Always" location permission
-      final alwaysResult = await Permission.locationAlways.request();
-      print('Location Always permission result: $alwaysResult');
-
-      if (alwaysResult.isGranted) {
-        print('✅ Location Always permission granted');
-        return true;
-      } else {
-        print('❌ Location Always permission not granted');
-        await _showAlwaysPermissionFailedDialog(context);
-        return false;
-      }
+      return false;
 
     } catch (e) {
       print('❌ Error checking location permission: $e');
