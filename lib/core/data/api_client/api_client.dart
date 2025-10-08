@@ -5,11 +5,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as path;
-import '../../../Screens/application_detail/model/action_history_model.dart';
-import '../../../Screens/application_detail/model/application_history_model.dart';
 import '../../../Screens/edit_application/model/edit_application_model.dart';
 import '../../../Screens/home_screen/model/dashboard_model.dart';
-import '../../../Screens/new_application/model/agents_model.dart';
 import '../../../Screens/new_application/model/application_status_model.dart';
 import '../../../Screens/new_application/model/application_type_model.dart';
 import '../../../Screens/new_application/model/create_application_model.dart';
@@ -79,33 +76,16 @@ class ApiClient {
     }
   }
 
-// Updated clockIn method in ApiClient
-  Future<Map<String, dynamic>> clockIn({double? latitude, double? longitude}) async {
+  Future<Map<String, dynamic>> clockIn() async {
     final token = await getAuthToken();
-
-    // Prepare the payload
-    Map<String, dynamic> payload = {
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    // Add coordinates if provided
-    if (latitude != null && longitude != null) {
-      payload['latitude'] = latitude;
-      payload['longitude'] = longitude;
-      print('🌍 Clock in with location: Lat: $latitude, Lng: $longitude');
-    } else {
-      print('⚠️ Clock in without location coordinates');
-    }
-
     final response = await http.post(
       Uri.parse(ApiConstants.clockIn),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode(payload),
+      body: jsonEncode({'timestamp': DateTime.now().toIso8601String()}),
     );
-
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
@@ -114,8 +94,6 @@ class ApiClient {
       );
     }
   }
-
-// Also update clockOut method if needed
 
   Future<Map<String, dynamic>> clockOut() async {
     final token = await getAuthToken();
@@ -176,68 +154,6 @@ class ApiClient {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
     throw Exception('Failed to fetch profile: ${response.statusCode}');
-  }
-// Add this method to your existing ApiClient class
-  Future<ApplicationHistoryResponse> postApplicationHistory(
-      String applicationId,
-      ApplicationHistoryRequest request
-      ) async {
-    final token = await getAuthToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('No auth token found');
-    }
-
-    try {
-      final response = await http.post(
-        Uri.parse(ApiConstants.postApplicationHistory(applicationId)),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(request.toJson()),
-      );
-
-      print('Application History Response: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-        return ApplicationHistoryResponse.fromJson(jsonData);
-      } else {
-        throw Exception('Failed to update application history: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error posting application history: $e');
-      rethrow;
-    }
-  }
-// Add this method to your existing ApiClient class
-  Future<ActionHistoryResponse> fetchApplicationHistory(String applicationId) async {
-    final token = await getAuthToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('No auth token found');
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse(ApiConstants.getApplicationHistory(applicationId)),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print('Application History Response: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-        return ActionHistoryResponse.fromJson(jsonData);
-      } else {
-        throw Exception('Failed to fetch application history: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching application history: $e');
-      rethrow;
-    }
   }
 
   Future<Map<String, dynamic>> updateProfileMultipart({
@@ -576,45 +492,6 @@ class ApiClient {
       );
     }
   }
-  Future<AgentsResponse> fetchAgents() async {
-    try {
-      final token = await getAuthToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('No auth token found');
-      }
-
-      final response = await http.get(
-        Uri.parse(ApiConstants.getAgents),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      print('Agents API Response status: ${response.statusCode}');
-      print('Agents API Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = jsonDecode(response.body);
-        return AgentsResponse.fromJson(jsonData);
-      } else {
-        return AgentsResponse(
-          success: false,
-          message: 'Failed to fetch agents. Status: ${response.statusCode}',
-          data: [],
-        );
-      }
-    } catch (e) {
-      print('Error fetching agents: $e');
-      return AgentsResponse(
-        success: false,
-        message: 'Network error: $e',
-        data: [],
-      );
-    }
-  }
-
 }
 
 

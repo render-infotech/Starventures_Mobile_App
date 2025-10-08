@@ -35,7 +35,7 @@ class SignInController extends GetxController {
         appInit.initProfile();
 
         try {
-          if (type == 'employee' || type == 'manager') {
+          if (type == 'employee') {
             print('Navigating to employee home');
 
             Get.offAllNamed(AppRoutes.homeScreenMain, arguments: {'role': 'employee'});
