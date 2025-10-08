@@ -10,7 +10,7 @@ import '../../../Screens/home_screen/model/dashboard_model.dart';
 import '../../../Screens/new_application/model/application_status_model.dart';
 import '../../../Screens/new_application/model/application_type_model.dart';
 import '../../../Screens/new_application/model/create_application_model.dart';
-import '../../../Screens/sign_in_screen/login_model/login_responce_model.dart';
+import '../../../auth/sign_in_screen/login_model/login_responce_model.dart';
 import '../../../core/data/api_constant/api_constant.dart';
 
 import 'dart:io';
@@ -32,6 +32,7 @@ class ApiClient {
       return false;
     }
   }
+
   Future<void> clearToken() async {
     await secureStorage.delete(key: 'auth_token');
   }
@@ -69,7 +70,9 @@ class ApiClient {
     if (response.statusCode == 200) {
       return LoginResponse.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to login. Server responded: ${response.statusCode}');
+      throw Exception(
+        'Failed to login. Server responded: ${response.statusCode}',
+      );
     }
   }
 
@@ -86,7 +89,9 @@ class ApiClient {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to clock in. Server responded: ${response.statusCode}');
+      throw Exception(
+        'Failed to clock in. Server responded: ${response.statusCode}',
+      );
     }
   }
 
@@ -103,9 +108,12 @@ class ApiClient {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to clock out. Server responded: ${response.statusCode}');
+      throw Exception(
+        'Failed to clock out. Server responded: ${response.statusCode}',
+      );
     }
   }
+
   Future<DashboardResponse> fetchDashboard() async {
     final token = await getAuthToken();
     if (token == null || token.isEmpty) {
@@ -187,7 +195,9 @@ class ApiClient {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception('Failed to update profile: ${response.statusCode}: ${response.body}');
+      throw Exception(
+        'Failed to update profile: ${response.statusCode}: ${response.body}',
+      );
     }
   }
 
@@ -209,7 +219,9 @@ class ApiClient {
       final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
       return ApplicationTypeResponse.fromJson(jsonData);
     } else {
-      throw Exception('Failed to fetch application types: ${response.statusCode}');
+      throw Exception(
+        'Failed to fetch application types: ${response.statusCode}',
+      );
     }
   }
 
@@ -231,10 +243,15 @@ class ApiClient {
       final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
       return ApplicationStatusResponse.fromJson(jsonData);
     } else {
-      throw Exception('Failed to fetch application statuses: ${response.statusCode}');
+      throw Exception(
+        'Failed to fetch application statuses: ${response.statusCode}',
+      );
     }
   }
-  Future<Map<String, dynamic>> fetchApplicationDetail(String applicationId) async {
+
+  Future<Map<String, dynamic>> fetchApplicationDetail(
+    String applicationId,
+  ) async {
     final token = await getAuthToken();
     if (token == null || token.isEmpty) {
       throw Exception('No auth token found');
@@ -251,10 +268,16 @@ class ApiClient {
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    throw Exception('Failed to fetch application detail: ${response.statusCode}');
+    throw Exception(
+      'Failed to fetch application detail: ${response.statusCode}',
+    );
   }
-// Add this method to your existing ApiClient class
-  Future<EditApplicationResponse> editApplication(String applicationId, EditApplicationModel applicationData) async {
+
+  // Add this method to your existing ApiClient class
+  Future<EditApplicationResponse> editApplication(
+    String applicationId,
+    EditApplicationModel applicationData,
+  ) async {
     try {
       final token = await getAuthToken();
       if (token == null || token.isEmpty) {
@@ -262,16 +285,19 @@ class ApiClient {
       }
 
       final uri = Uri.parse(ApiConstants.editApplication(applicationId));
-      final request = http.MultipartRequest('POST', uri) // or 'POST' based on your API
-        ..headers['Authorization'] = 'Bearer $token'
-        ..headers['Accept'] = 'application/json';
+      final request =
+          http.MultipartRequest('POST', uri) // or 'POST' based on your API
+            ..headers['Authorization'] = 'Bearer $token'
+            ..headers['Accept'] = 'application/json';
 
       // Add form fields
       request.fields.addAll(applicationData.toFormFields());
 
       // Add files if they exist
       if (applicationData.aadhaarFile != null) {
-        File? compressedAadhaar = await compressImage(applicationData.aadhaarFile!);
+        File? compressedAadhaar = await compressImage(
+          applicationData.aadhaarFile!,
+        );
         if (compressedAadhaar != null) {
           request.files.add(
             await http.MultipartFile.fromPath(
@@ -305,7 +331,8 @@ class ApiClient {
       } else {
         return EditApplicationResponse(
           success: false,
-          message: 'Failed to update application: ${response.statusCode} - ${response.body}',
+          message:
+              'Failed to update application: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
@@ -317,21 +344,27 @@ class ApiClient {
   }
 
   // NEW: Image compression method
-  Future<File?> compressImage(File imageFile, {int quality = 85, int maxWidth = 1920, int maxHeight = 1080}) async {
+  Future<File?> compressImage(
+    File imageFile, {
+    int quality = 85,
+    int maxWidth = 1920,
+    int maxHeight = 1080,
+  }) async {
     try {
       final String targetPath = path.join(
-          Directory.systemTemp.path,
-          'compressed_${DateTime.now().millisecondsSinceEpoch}_${path.basename(imageFile.path)}'
+        Directory.systemTemp.path,
+        'compressed_${DateTime.now().millisecondsSinceEpoch}_${path.basename(imageFile.path)}',
       );
 
-      final XFile? compressedFile = await FlutterImageCompress.compressAndGetFile(
-        imageFile.absolute.path,
-        targetPath,
-        quality: quality,
-        minWidth: maxWidth,
-        minHeight: maxHeight,
-        format: CompressFormat.jpeg,
-      );
+      final XFile? compressedFile =
+          await FlutterImageCompress.compressAndGetFile(
+            imageFile.absolute.path,
+            targetPath,
+            quality: quality,
+            minWidth: maxWidth,
+            minHeight: maxHeight,
+            format: CompressFormat.jpeg,
+          );
 
       if (compressedFile != null) {
         final compressedImageFile = File(compressedFile.path);
@@ -347,7 +380,9 @@ class ApiClient {
   }
 
   // NEW: Create application method with compression
-  Future<CreateApplicationResponse> createApplication(CreateApplicationModel applicationData) async {
+  Future<CreateApplicationResponse> createApplication(
+    CreateApplicationModel applicationData,
+  ) async {
     try {
       final token = await getAuthToken();
       if (token == null || token.isEmpty) {
@@ -355,9 +390,10 @@ class ApiClient {
       }
 
       final uri = Uri.parse(ApiConstants.createApplciations);
-      final request = http.MultipartRequest('POST', uri)
-        ..headers['Authorization'] = 'Bearer $token'
-        ..headers['Accept'] = 'application/json';
+      final request =
+          http.MultipartRequest('POST', uri)
+            ..headers['Authorization'] = 'Bearer $token'
+            ..headers['Accept'] = 'application/json';
 
       // Add form fields matching API payload
       request.fields.addAll(applicationData.toFormFields());
@@ -367,7 +403,8 @@ class ApiClient {
         File? compressedAadhaar;
 
         // Check if it's an image or PDF
-        final aadhaarExtension = path.extension(applicationData.aadhaarFile!.path).toLowerCase();
+        final aadhaarExtension =
+            path.extension(applicationData.aadhaarFile!.path).toLowerCase();
         if (['.jpg', '.jpeg', '.png'].contains(aadhaarExtension)) {
           // Compress image files
           compressedAadhaar = await compressImage(
@@ -382,7 +419,8 @@ class ApiClient {
         }
 
         if (compressedAadhaar != null) {
-          final mimeType = aadhaarExtension == '.pdf' ? 'application/pdf' : 'image/jpeg';
+          final mimeType =
+              aadhaarExtension == '.pdf' ? 'application/pdf' : 'image/jpeg';
           request.files.add(
             await http.MultipartFile.fromPath(
               'aadhaar_file', // Match API payload
@@ -398,7 +436,8 @@ class ApiClient {
         File? compressedPan;
 
         // Check if it's an image or PDF
-        final panExtension = path.extension(applicationData.panCardFile!.path).toLowerCase();
+        final panExtension =
+            path.extension(applicationData.panCardFile!.path).toLowerCase();
         if (['.jpg', '.jpeg', '.png'].contains(panExtension)) {
           // Compress image files
           compressedPan = await compressImage(
@@ -413,7 +452,8 @@ class ApiClient {
         }
 
         if (compressedPan != null) {
-          final mimeType = panExtension == '.pdf' ? 'application/pdf' : 'image/jpeg';
+          final mimeType =
+              panExtension == '.pdf' ? 'application/pdf' : 'image/jpeg';
           request.files.add(
             await http.MultipartFile.fromPath(
               'pan_card_file', // Match API payload
@@ -440,7 +480,8 @@ class ApiClient {
       } else {
         return CreateApplicationResponse(
           success: false,
-          message: 'Failed to create application: ${response.statusCode} - ${response.body}',
+          message:
+              'Failed to create application: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {

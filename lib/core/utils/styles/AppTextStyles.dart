@@ -41,7 +41,7 @@ class AppTextStyles {
   static const TextStyle body = regular;
 
   static const TextStyle caption = TextStyle(
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: FontWeight.w400,
     height: 1.3,
     color: Colors.black45,
