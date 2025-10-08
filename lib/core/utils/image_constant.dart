@@ -9,6 +9,5 @@ class ImageConstant {
   static String application = 'assets/svg/application.svg';
   static String profile = 'assets/svg/profile.svg';
   static String documents = 'assets/svg/documents.svg';
-  static String logout='assets/svg/logout.svg';
-
+  static String logout = 'assets/svg/logout.svg';
 }
