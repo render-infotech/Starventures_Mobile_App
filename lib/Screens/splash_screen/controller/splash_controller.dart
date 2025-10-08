@@ -23,27 +23,16 @@ class SplashController extends GetxController {
   // Check for existing token and navigate accordingly
   Future<void> _checkAuthenticationAndNavigate() async {
     try {
-      // Get token and role from secure storage
+      // Get token from secure storage
       final token = await secureStorage.read(key: 'auth_token');
-      final role = await secureStorage.read(key: 'user_role');
 
-      print(
-        'Splash Controller - Token check: ${token != null ? 'Token exists' : 'No token found'}',
-      );
-      print('Splash Controller - Role check: ${role ?? 'No role found'}');
+      print('Splash Controller - Token check: ${token != null ? 'Token exists' : 'No token found'}');
 
       if (token != null && token.isNotEmpty) {
-        // Token exists, navigate to home screen with saved role
-        final userRole =
-            role ?? 'employee'; // Default to employee if no role saved
-        print(
-          'Navigating to home screen - user is authenticated as: $userRole',
-        );
+        // Token exists, navigate to home screen
+        print('Navigating to home screen - user is authenticated');
 
-        Get.offAllNamed(
-          AppRoutes.homeScreenMain,
-          arguments: {'role': userRole},
-        );
+        Get.offAllNamed(AppRoutes.homeScreenMain);
       } else {
         // No token found, navigate to sign-in screen
         print('Navigating to sign-in screen - user not authenticated');

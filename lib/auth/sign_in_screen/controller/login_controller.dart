@@ -20,8 +20,10 @@ class SignInController extends GetxController {
     String password,
     BuildContext context,
   ) async {
+    // Show overlay loading
     LoadingService.to.show(message: 'Signing you in...');
 
+    // Set button loading state
     loading.value = true;
 
     try {
@@ -40,24 +42,24 @@ class SignInController extends GetxController {
           key: 'auth_token',
           value: loginResponse.data.token,
         );
-        await secureStorage.write(key: 'user_role', value: type);
-        await secureStorage.write(key: 'user_role', value: type);
         final appInit = AppInitialize();
         appInit.initProfile();
 
         try {
+          // Force customer navigation for testing
           if (type == 'customer') {
-            print(' CUSTOMER TYPE DETECTED - Forcing customer navigation');
-            // print(' About to navigate to customer home...');
-            print('Route: ${AppRoutes.homeScreenMain}');
-            print('Arguments: {"role": "customer"}');
+            print('🎯 CUSTOMER TYPE DETECTED - Forcing customer navigation');
+            print('🚀 About to navigate to customer home...');
+            print('📍 Route: ${AppRoutes.homeScreenMain}');
+            print('📦 Arguments: {"role": "customer"}');
 
+            // Try navigation
             final result = Get.offAllNamed(
               AppRoutes.homeScreenMain,
               arguments: {'role': 'customer'},
             );
             print('✅ Customer navigation command sent, result: $result');
-            return;
+            return; // Exit early to avoid other conditions
           }
 
           if (type == 'employee') {
@@ -98,6 +100,7 @@ class SignInController extends GetxController {
         message: "Login failed please try again",
       );
     } finally {
+      // Hide overlay loading and button loading
       LoadingService.to.hide();
       loading.value = false;
     }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/data/api_client/api_client.dart';
 import '../../../core/utils/custom_snackbar.dart';
 import '../../../app_routes.dart';
+// import 'package:starcapitalventures/Screens/sign_in/sign_in_screen.dart'; // optional fallback
 
 class LogoutController extends GetxController {
   final ApiClient apiClient = ApiClient();
@@ -19,10 +20,9 @@ class LogoutController extends GetxController {
       CustomSnackbar.show(
         context,
         title: success ? 'Logout Successful' : 'Logout Completed',
-        message:
-            success
-                ? 'You have been logged out successfully'
-                : 'Logged out locally. Please check your connection.',
+        message: success
+            ? 'You have been logged out successfully'
+            : 'Logged out locally. Please check your connection.',
       );
 
       try {
@@ -37,9 +37,6 @@ class LogoutController extends GetxController {
     } catch (err, st) {
       print('[Logout] ERROR: $err\n$st');
       await apiClient.clearToken();
-      await apiClient.secureStorage.delete(key: 'user_role');
-      // Also clear the user role
-      await apiClient.secureStorage.delete(key: 'user_role');
       CustomSnackbar.show(
         context,
         title: 'Logout Error',
