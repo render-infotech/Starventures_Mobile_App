@@ -206,62 +206,39 @@ class _HomeScreenCustomerState extends State<HomeScreenCustomer> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildLoanTypeItem(
-              Icons.home,
-              'Home Loan',
-              () => Get.toNamed(AppRoutes.newapplication),
-            ),
-            _buildLoanTypeItem(
-              Icons.directions_car,
-              'Car Loan',
-              () => Get.toNamed(AppRoutes.newapplication),
-            ),
-            _buildLoanTypeItem(
-              Icons.person,
-              'Personal Loan',
-              () => Get.toNamed(AppRoutes.newapplication),
-            ),
-            _buildLoanTypeItem(
-              Icons.credit_card,
-              'Credit Card',
-              () => Get.toNamed(AppRoutes.newapplication),
-            ),
+            _buildLoanTypeItem(Icons.home, 'Home Loan'),
+            _buildLoanTypeItem(Icons.directions_car, 'Car Loan'),
+            _buildLoanTypeItem(Icons.person, 'Personal Loan'),
+            _buildLoanTypeItem(Icons.credit_card, 'Credit Card'),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildLoanTypeItem(IconData icon, String title, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: getSize(60),
-            height: getSize(60),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(getSize(16)),
-            ),
-            child: Icon(
-              icon,
-              size: getSize(28),
-              color: const Color(0xFF4A2B1A),
-            ),
+  Widget _buildLoanTypeItem(IconData icon, String title) {
+    return Column(
+      children: [
+        Container(
+          width: getSize(60),
+          height: getSize(60),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(getSize(16)),
           ),
-          SizedBox(height: getVerticalSize(8)),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: getFontSize(12),
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Icon(icon, size: getSize(28), color: const Color(0xFF4A2B1A)),
+        ),
+        SizedBox(height: getVerticalSize(8)),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: getFontSize(12),
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
