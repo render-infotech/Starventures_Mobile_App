@@ -1,11 +1,13 @@
 // lib/screens/new_application_screen.dart
 import 'package:file_picker/file_picker.dart';
+import 'package:starcapitalventures/Screens/new_application/model/agents_model.dart';
 import '../../app_export/app_export.dart';
 import '../../widgets/custom_app_bar.dart';
 import 'package:flutter/services.dart';
 import '../../widgets/custom_text_form_field.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'controller/agents_controller.dart';
 import 'controller/application_status_controller.dart';
 import 'controller/application_type_controller.dart';
 import 'controller/create_application_controller.dart';
@@ -22,8 +24,20 @@ class NewApplicationScreen extends StatefulWidget {
 class _NewApplicationScreenState extends State<NewApplicationScreen> {
   // GetX Controllers
   final ApplicationStatusController _statusController = Get.put(ApplicationStatusController());
-  final ApplicationTypeController _typeController = Get.put(ApplicationTypeController());
+  final ApplicationTypeController _typeController = ApplicationTypeController.to;
   final CreateApplicationController _createController = Get.put(CreateApplicationController());
+  final AgentsController _agentsController = Get.put(AgentsController());
+  @override
+  void initState() {
+    super.initState();
+
+    // Handle pre-selected application type from arguments
+    final arguments = Get.arguments as Map<String, dynamic>?;
+    if (arguments != null && arguments['selectedApplicationType'] != null) {
+      final selectedType = arguments['selectedApplicationType'] as ApplicationTypeModel;
+      _typeController.preSelectApplicationType(selectedType);
+    }
+  }
 
   @override
   void dispose() {
@@ -211,51 +225,9 @@ class _NewApplicationScreenState extends State<NewApplicationScreen> {
               margin: getMargin(top: 8, bottom: 16),
             ),
 
-            // Loan Type (Static dropdown) - Fixed: Use simple string list
-            _FieldLabel('Loan Type'),
-            Obx(() => Container(
-              margin: getMargin(top: 8, bottom: 16),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: AppRadii.lg,
-                border: Border.all(color: appTheme.blueGray10001, width: 1),
-              ),
-              padding: getPadding(left: 10, right: 10),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  dropdownColor: appTheme.whiteA700,
-                  isExpanded: true,
-                  hint: Text(
-                    'Select loan type',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.black45,
-                    ),
-                  ),
-                  value: _createController.selectedLoanType.value,
-                  items: _createController.loanTypes
-                      .map(
-                        (loanType) => DropdownMenuItem<String>(
-                      value: loanType,
-                      child: Text(
-                        loanType,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  )
-                      .toList(),
-                  onChanged: (String? value) {
-                    _createController.selectedLoanType.value = value;
-                  },
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                ),
-              ),
-            )),
 
-            // Application Type (GetX Dynamic Dropdown)
-            _FieldLabel('Application Type'),
+            // Change this section in NewApplicationScreen
+            _FieldLabel('Loan Type'), // Changed from 'Application Type'
             Obx(() => Container(
               margin: getMargin(top: 8, bottom: 16),
               width: double.infinity,
@@ -282,7 +254,7 @@ class _NewApplicationScreenState extends State<NewApplicationScreen> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'Loading application types...',
+                      'Loading loan types...', // Changed text
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.black45,
                       ),
@@ -295,7 +267,7 @@ class _NewApplicationScreenState extends State<NewApplicationScreen> {
                   dropdownColor: appTheme.whiteA700,
                   isExpanded: true,
                   hint: Text(
-                    'Select application type',
+                    'Select loan type', // Changed hint text
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.black45,
                     ),
@@ -387,6 +359,60 @@ class _NewApplicationScreenState extends State<NewApplicationScreen> {
             )),
 
             // Monthly Income
+
+            _FieldLabel('Select Agent'),
+            Obx(() => Container(
+              margin: getMargin(top: 8, bottom: 16),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: AppRadii.lg,
+                border: Border.all(color: appTheme.blueGray10001, width: 1),
+              ),
+              padding: getPadding(left: 10, right: 10),
+              child: _agentsController.isLoading.value
+                  ? Padding(
+                padding: getPadding(all: 14),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(appTheme.navyBlue),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Loading agents...'),
+                  ],
+                ),
+              )
+                  : DropdownButtonHideUnderline(
+                child: DropdownButton<AgentModel>(
+                  dropdownColor: appTheme.whiteA700,
+                  isExpanded: true,
+                  hint: Text('Select an agent',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.black45,
+                    ),),
+                  value: _agentsController.selectedAgent.value,
+                  items: _agentsController.agents
+                      .map((agent) => DropdownMenuItem<AgentModel>(
+                    value: agent,
+                    child: Text('${agent.name} ',
+    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+    color: Colors.black87,)
+                    ),
+                  ))
+                      .toList(),
+                  onChanged: (AgentModel? value) {
+                    _agentsController.selectAgent(value);
+                  },
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                ),
+              ),
+            )),
             _FieldLabel('Monthly Income'),
             CustomTextFormField(
               controller: _createController.incomeController,
@@ -513,7 +539,7 @@ class _NewApplicationScreenState extends State<NewApplicationScreen> {
                 shape: RoundedRectangleBorder(borderRadius: AppRadii.lg),
                 backgroundColor: _createController.isSubmitting.value
                     ? Colors.grey
-                    : appTheme.navyBlue,
+                    : appTheme.theme,
                 foregroundColor: Colors.white,
               ),
               buttonTextStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -526,7 +552,9 @@ class _NewApplicationScreenState extends State<NewApplicationScreen> {
                 _createController.submitApplication(
                   applicationTypeId: _typeController.getSelectedApplicationTypeId(),
                   applicationStatusId: _statusController.getSelectedApplicationStatusId(),
+                  agentId: _agentsController.getSelectedAgentId(),
                 );
+
               },
             )),
           ],

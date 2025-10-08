@@ -9,6 +9,7 @@ import 'package:starcapitalventures/core/utils/styles/custom_border_radius.dart'
 import 'package:intl/intl.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../applications/model/application_model.dart';
+import 'action_history_widget.dart';
 import 'application_detail_controller/application_detail_controller.dart';
 import 'model/application_detail_model.dart';
 import '../../../core/utils/loading_service.dart';
@@ -145,14 +146,80 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                   SizedBox(height: getVerticalSize(16)),
                 ],
 
+                _ApplicationProgressSection(currentStatus: detail.status),
+                SizedBox(height: getVerticalSize(16)),
                 _SectionTitle('Uploaded Documents'),
                 SizedBox(height: getVerticalSize(10)),
                 _DocumentsGrid(detail: detail),
+                SizedBox(height: getVerticalSize(10)),
+
+                _SectionTitle('Other Documents'),
+                SizedBox(height: getVerticalSize(10)),
+
+// Fixed Row with Expanded widgets for equal width buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomElevatedButton(
+                        text: 'Add More Documents',
+                        height: 40, // Increased height for better touch area
+                        buttonStyle: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadii.lg,
+                          ),
+                          backgroundColor: appTheme.theme2,
+                          foregroundColor: Colors.white,
+                        ),
+                        buttonTextStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onPressed: () {
+                      Get.toNamed(AppRoutes.addOtherDocuments);
+                        },
+                      ),
+                    ),
+                    SizedBox(width: getHorizontalSize(12)), // Spacing between buttons
+                    Expanded(
+                      child: CustomElevatedButton(
+                        text: 'View Documents',
+                        height: 40,
+                        buttonStyle: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadii.lg,
+                          ),
+                          backgroundColor: Colors.white,
+                          foregroundColor: appTheme.theme2,
+                          side: BorderSide(color: appTheme.theme2, width: 1), // Add border for outline style
+                        ),
+                        buttonTextStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: appTheme.theme2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onPressed: () {
+                          // Add your navigation logic here
+                          print('View Documents pressed');
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: getVerticalSize(16)),
 
                 SizedBox(height: getVerticalSize(16)),
                 _SectionTitle('Assignment Information'),
                 SizedBox(height: getVerticalSize(10)),
                 _AssignmentCard(detail: detail),
+                _SectionTitle('Action History'),
+
+                ActionHistoryWidget(
+                  applicationId: widget.applicationId,
+                  onUpdate: () {
+                    // Refresh the main application detail when history is updated
+                    _controller.refreshApplicationDetail(widget.applicationId);
+                  },
+                ),
               ],
             ),
           ),
@@ -509,7 +576,247 @@ class DocumentItem {
     required this.uploaded,
   });
 }
+class _ProgressRow extends StatelessWidget {
+  const _ProgressRow({super.key, required this.step});
+  final ProgressStep step;
 
+  @override
+  Widget build(BuildContext context) {
+    final isComplete = step.state == ProgressState.complete;
+    final isActive = step.state == ProgressState.active;
+    final isPending = step.state == ProgressState.pending;
+
+    // Color scheme based on state
+    final circleColor = isComplete
+        ? const Color(0xFF22A16B)  // Green for completed
+        : isActive
+        ? const Color(0xFF4F8BFF)  // Blue for current/active
+        : const Color(0xFFE0E6F1); // Gray for pending
+
+    final backgroundColor = isComplete
+        ? const Color(0xFFE8FFF4)  // Light green background
+        : isActive
+        ? const Color(0xFFE7F0FF)  // Light blue background
+        : const Color(0xFFF2F4F8); // Light gray background
+
+    final textColor = isComplete || isActive
+        ? const Color(0xFF1A2036)
+        : Colors.black54;
+
+    return Padding(
+      padding: getPadding(bottom: step.index == 8 ? 0 : 16), // No padding for last item
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Progress indicator
+          SizedBox(
+            width: getHorizontalSize(32),
+            child: Column(
+              children: [
+                Container(
+                  width: getHorizontalSize(24),
+                  height: getHorizontalSize(24),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: AppRadii.pill,
+                    border: Border.all(color: circleColor, width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: isComplete
+                      ? Icon(
+                      Icons.check,
+                      size: getHorizontalSize(16),
+                      color: const Color(0xFF22A16B)
+                  )
+                      : isActive
+                      ? Container(
+                    width: getHorizontalSize(8),
+                    height: getHorizontalSize(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF4F8BFF),
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                      : Text(
+                      '${step.index}',
+                      style: TextStyle(
+                          fontSize: getFontSize(11),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black45
+                      )
+                  ),
+                ),
+                // Connector line (except for last item)
+                if (step.index < 8) ...[
+                  SizedBox(height: getVerticalSize(4)),
+                  Container(
+                    width: getHorizontalSize(2),
+                    height: getVerticalSize(32),
+                    color: isComplete
+                        ? const Color(0xFF22A16B).withOpacity(0.3)
+                        : const Color(0xFFE0E6F1),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SizedBox(width: getHorizontalSize(12)),
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    step.title,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: textColor
+                    )
+                ),
+                SizedBox(height: getVerticalSize(2)),
+                Text(
+                    step.subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.black54
+                    )
+                ),
+                // Status badge for current step
+                if (isActive) ...[
+                  SizedBox(height: getVerticalSize(4)),
+                  Container(
+                    padding: getPadding(bottom: 8, top: 8, left: 12, right: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4F8BFF).withOpacity(0.1),
+                      borderRadius: AppRadii.sm,
+                      border: Border.all(
+                        color: const Color(0xFF4F8BFF).withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'Processing',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF4F8BFF),
+                        fontWeight: FontWeight.w500,
+                        fontSize: getFontSize(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ApplicationProgressSection extends StatelessWidget {
+  const _ApplicationProgressSection({required this.currentStatus});
+
+  final String currentStatus;
+
+  List<ProgressStep> _buildProgressSteps() {
+    // Status order from your API response
+    final statusOrder = [
+      {'name': 'Login', 'subtitle': 'Application submitted'},
+      {'name': 'Technical', 'subtitle': 'Technical verification'},
+      {'name': 'FI-Legal', 'subtitle': 'Financial & legal check'},
+      {'name': 'PD', 'subtitle': 'Personal discussion'},
+      {'name': 'Saction', 'subtitle': 'Sanction process'},
+      {'name': 'Agreement', 'subtitle': 'Agreement signing'},
+      {'name': 'MODT-Registration', 'subtitle': 'MODT & registration'},
+      {'name': 'Disbursement', 'subtitle': 'Amount disbursement'},
+    ];
+
+    // Find current status index
+    int currentIndex = statusOrder.indexWhere((status) => status['name'] == currentStatus);
+    if (currentIndex == -1) currentIndex = 0; // Default to first if not found
+
+    return statusOrder.asMap().entries.map((entry) {
+      int index = entry.key;
+      Map<String, String> status = entry.value;
+
+      ProgressState state;
+      if (index < currentIndex) {
+        state = ProgressState.complete;
+      } else if (index == currentIndex) {
+        state = ProgressState.active;
+      } else {
+        state = ProgressState.pending;
+      }
+
+      return ProgressStep(
+        index: index + 1,
+        title: status['name']!,
+        subtitle: status['subtitle']!,
+        state: state,
+      );
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = _buildProgressSteps();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadii.lg,
+        border: Border.all(color: const Color(0xFFE9EDF5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: getPadding(all: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Application Progress',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1A2036),
+            ),
+          ),
+          SizedBox(height: getVerticalSize(4)),
+          Text(
+            'Track your application status',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.black54,
+            ),
+          ),
+          SizedBox(height: getVerticalSize(16)),
+          Column(
+            children: steps.map((step) => _ProgressRow(step: step)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// At the top of your file, add:
+enum ProgressState { complete, active, pending }
+
+class ProgressStep {
+  final int index;
+  final String title;
+  final String subtitle;
+  final ProgressState state;
+
+  ProgressStep({
+    required this.index,
+    required this.title,
+    required this.subtitle,
+    required this.state,
+  });
+}
 
 /*import 'package:flutter/material.dart';
 import 'package:starcapitalventures/core/utils/appTheme/app_theme.dart';

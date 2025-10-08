@@ -170,7 +170,7 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
                 buttonStyle: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, getVerticalSize(48)),
                   shape: RoundedRectangleBorder(borderRadius: AppRadii.lg),
-                  backgroundColor: appTheme.navyBlue,
+                  backgroundColor: appTheme.theme,
                   foregroundColor: Colors.white,
                 ),
                 buttonTextStyle: Theme.of(context).textTheme.titleSmall?.copyWith(

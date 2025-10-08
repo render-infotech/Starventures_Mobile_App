@@ -12,6 +12,7 @@ class CreateApplicationModel {
   final String notes;   // Changed to match API payload
   final File? aadhaarFile;
   final File? panCardFile; // Changed to match API payload
+  final int agentId;
 
   CreateApplicationModel({
     required this.customerName,
@@ -24,6 +25,7 @@ class CreateApplicationModel {
     required this.notes,
     this.aadhaarFile,
     this.panCardFile,
+    required this.agentId,
   });
 
   // Convert to form fields matching API payload
@@ -33,6 +35,7 @@ class CreateApplicationModel {
       'email': email,
       'phone': phoneNumber,
       'loan_amount': loanAmount,
+      'agent_id': agentId.toString(),
       'loan_type_id': loanTypeId.toString(),
       'status_id': statusId.toString(),
       'monthly_income': monthlyIncome,

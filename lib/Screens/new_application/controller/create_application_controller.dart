@@ -34,13 +34,6 @@ class CreateApplicationController extends GetxController {
   // Dropdown selections - Fixed: Store string names instead of maps
   var selectedLoanType = Rx<String?>(null);
 
-  // Static loan types with proper string list
-  final List<String> loanTypes = const [
-    'Home Loan',
-    'Personal Loan',
-    'Car Loan',
-    'Education Loan',
-  ];
 
   @override
   void onInit() {
@@ -176,6 +169,7 @@ class CreateApplicationController extends GetxController {
   bool validateForm({
     required int? applicationTypeId,
     required int? applicationStatusId,
+    required int? agentId,
   }) {
     _clearMessages();
 
@@ -200,11 +194,7 @@ class CreateApplicationController extends GetxController {
       return false;
     }
 
-    // Validate dropdowns
-    if (selectedLoanType.value == null) {
-      _setErrorMessage('Please select loan type');
-      return false;
-    }
+    // Remove the selectedLoanType validation
 
     if (applicationTypeId == null) {
       _setErrorMessage('Please select application type');
@@ -213,6 +203,11 @@ class CreateApplicationController extends GetxController {
 
     if (applicationStatusId == null) {
       _setErrorMessage('Please select application status');
+      return false;
+    }
+
+    if (agentId == null) {
+      _setErrorMessage('Please select an agent');
       return false;
     }
 
@@ -230,20 +225,20 @@ class CreateApplicationController extends GetxController {
     return true;
   }
 
-  // Submit application - Fixed: Handle null safety properly
   Future<void> submitApplication({
     required int? applicationTypeId,
     required int? applicationStatusId,
+    required int? agentId,
   }) async {
-    // Check for null values before validation
-    if (applicationTypeId == null || applicationStatusId == null) {
-      _setErrorMessage('Please select both application type and status');
+    if (applicationTypeId == null || applicationStatusId == null || agentId == null) {
+      _setErrorMessage('Please select application type, status, and agent');
       return;
     }
 
     if (!validateForm(
       applicationTypeId: applicationTypeId,
       applicationStatusId: applicationStatusId,
+      agentId: agentId,
     )) {
       return;
     }
@@ -252,27 +247,25 @@ class CreateApplicationController extends GetxController {
       isSubmitting(true);
       _clearMessages();
 
-      // Get loan type ID safely
-      final loanTypeId = getLoanTypeId(selectedLoanType.value!);
-
-      // Create application model matching API payload
+      // Use applicationTypeId as loanTypeId since they're the same
       final applicationData = CreateApplicationModel(
         customerName: nameController.text.trim(),
         phoneNumber: phoneController.text.trim(),
         email: emailController.text.trim(),
         loanAmount: amountController.text.trim(),
-        loanTypeId: loanTypeId,
-        statusId: applicationStatusId, // Now guaranteed to be non-null
+        loanTypeId: applicationTypeId, // Use applicationTypeId instead
+        statusId: applicationStatusId,
+        agentId: agentId,
         monthlyIncome: incomeController.text.trim(),
         notes: notesController.text.trim(),
         aadhaarFile: aadhaarFile.value,
         panCardFile: panFile.value,
       );
 
-      print('Submitting application: $applicationData');
-
-      // Submit to API with compression
       final response = await _apiClient.createApplication(applicationData);
+
+      print('Submitting application with Agent ID: $agentId');
+
 
       if (response.success) {
         _setSuccessMessage(response.message.isNotEmpty
@@ -280,7 +273,6 @@ class CreateApplicationController extends GetxController {
             : 'Application submitted successfully!');
         _clearForm();
 
-        // Show success dialog and navigate back
         Get.dialog(
           AlertDialog(
             backgroundColor: appTheme.whiteA700,
@@ -289,12 +281,11 @@ class CreateApplicationController extends GetxController {
                 ? response.message
                 : 'Application submitted successfully!'),
             actions: [
-
               CustomElevatedButton(
                 text: 'OK',
                 onPressed: () {
-                  Get.back(); // Close dialog
-                  Get.back(); // Go back to previous screen
+                  Get.back();
+                  Get.back();
                 },
                 buttonStyle: ElevatedButton.styleFrom(
                   backgroundColor: appTheme.theme,
