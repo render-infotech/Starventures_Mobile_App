@@ -1,3 +1,5 @@
+// lib/Screens/applications/model/application_model.dart
+
 import 'dart:convert';
 
 class ApplicationResponse {
@@ -31,6 +33,7 @@ class Application {
   final String loanType;
   final String status;
   final double monthlyIncome;
+  final Bank? bank;
   final AssignedTo? assignedTo;
   final CreatedBy? createdBy;
   final String? notes;
@@ -50,6 +53,7 @@ class Application {
     required this.loanType,
     required this.status,
     required this.monthlyIncome,
+    this.bank,
     this.assignedTo,
     this.createdBy,
     this.notes,
@@ -71,6 +75,7 @@ class Application {
       loanType: json['loan_type'] ?? '',
       status: json['status'] ?? '',
       monthlyIncome: double.tryParse(json['monthly_income']?.toString() ?? '0') ?? 0.0,
+      bank: json['bank'] != null ? Bank.fromJson(json['bank']) : null,
       assignedTo: json['assigned_to'] != null ? AssignedTo.fromJson(json['assigned_to']) : null,
       createdBy: json['created_by'] != null ? CreatedBy.fromJson(json['created_by']) : null,
       notes: json['notes'],
@@ -83,42 +88,58 @@ class Application {
     );
   }
 
-  // Helper getter for display name (using customer_name)
+  // Helper getter for display name
   String get displayName => customerName;
 
   // Helper method to get formatted amount
   String get formattedAmount {
-    return '₹${_formatINR(loanAmount.toInt())}';
+    return '₹${_formatINR(loanAmount)}';
   }
 
-  // Helper method to get status enum
+  // ✅ FIXED: Status enum with proper case handling
   ApplicationStatus get statusEnum {
-    switch (status.toLowerCase()) {
+    final normalizedStatus = status.toLowerCase().trim();
+
+    switch (normalizedStatus) {
       case 'approved':
+      case 'sanction':     // ✅ FIXED: Correct spelling
+      case 'saction':      // Keep for backward compatibility if API ever sends this
         return ApplicationStatus.approved;
+
       case 'rejected':
+      case 'lost':
         return ApplicationStatus.rejected;
+
       case 'pending':
+      case 'pd':
         return ApplicationStatus.pending;
+
       default:
         return ApplicationStatus.processing;
     }
   }
 
   // Format as Indian currency
-  String _formatINR(int amount) {
-    final s = amount.toString();
+  String _formatINR(double amount) {
+    final intAmount = amount.round();
+    final s = intAmount.toString();
+
     if (s.length <= 3) return s;
+
     final last3 = s.substring(s.length - 3);
-    String rest = s.substring(0, s.length - 3);
-    final buf = StringBuffer();
-    while (rest.length > 2) {
-      buf.write('${rest.substring(rest.length - 2)},');
-      rest = rest.substring(0, rest.length - 2);
+    String remaining = s.substring(0, s.length - 3);
+
+    final List<String> parts = [];
+    while (remaining.length > 2) {
+      parts.add(remaining.substring(remaining.length - 2));
+      remaining = remaining.substring(0, remaining.length - 2);
     }
-    if (rest.isNotEmpty) buf.write(rest);
-    final commas = buf.toString().split('').reversed.join();
-    return '$commas,$last3';
+
+    if (remaining.isNotEmpty) {
+      parts.add(remaining);
+    }
+
+    return '${parts.reversed.join(',')},${last3}';
   }
 
   Map<String, dynamic> toJson() {
@@ -131,6 +152,7 @@ class Application {
       'loan_type': loanType,
       'status': status,
       'monthly_income': monthlyIncome.toString(),
+      'bank': bank?.toJson(),
       'assigned_to': assignedTo?.toJson(),
       'created_by': createdBy?.toJson(),
       'notes': notes,
@@ -140,6 +162,35 @@ class Application {
       'bank_statement_file_url': bankStatementFileUrl,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+// ✅ NEW: Bank model
+class Bank {
+  final int id;
+  final String name;
+  final String? bankLogo;
+
+  Bank({
+    required this.id,
+    required this.name,
+    this.bankLogo,
+  });
+
+  factory Bank.fromJson(Map<String, dynamic> json) {
+    return Bank(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      bankLogo: json['bank_logo'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'bank_logo': bankLogo,
     };
   }
 }

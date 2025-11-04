@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> with WidgetsBindingObserver
           child: Container(
             child: Image.asset(
                 ImageConstant.logo,
-                height: 200,
+                height: 120,
                 fit: BoxFit.contain
             ),
           ),

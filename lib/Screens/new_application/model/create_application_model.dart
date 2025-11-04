@@ -3,18 +3,23 @@ import 'dart:io';
 
 class CreateApplicationModel {
   final String customerName;
+  String? coApplicantName;
   final String phoneNumber;
   final String email;
   final String loanAmount;
-  final int loanTypeId; // Changed to match API payload
-  final int statusId;   // Changed to match API payload
+  final int loanTypeId;
+  final int statusId;
   final String monthlyIncome;
-  final String notes;   // Changed to match API payload
+  final String notes;
   final File? aadhaarFile;
-  final File? panCardFile; // Changed to match API payload
+  final File? panCardFile;
+  final int? agentId;
+  final int? bankId;
+  final int? employeeId; // ✅ Added
 
   CreateApplicationModel({
     required this.customerName,
+    this.coApplicantName,
     required this.phoneNumber,
     required this.email,
     required this.loanAmount,
@@ -24,25 +29,39 @@ class CreateApplicationModel {
     required this.notes,
     this.aadhaarFile,
     this.panCardFile,
+    this.agentId,
+    this.bankId,
+    this.employeeId, // ✅ Added
   });
 
-  // Convert to form fields matching API payload
   Map<String, String> toFormFields() {
-    return {
+    final map = <String, String>{
       'customer_name': customerName,
+      if (coApplicantName != null && coApplicantName!.isNotEmpty)  // ✅ NEW: Only add if not empty
+        'co_applicant_name': coApplicantName!,
       'email': email,
-      'phone': phoneNumber,
+      'phone': '+91$phoneNumber',
       'loan_amount': loanAmount,
       'loan_type_id': loanTypeId.toString(),
       'status_id': statusId.toString(),
       'monthly_income': monthlyIncome,
       'notes': notes,
     };
-  }
 
-  @override
-  String toString() {
-    return 'CreateApplicationModel{customerName: $customerName, phoneNumber: $phoneNumber, email: $email, loanAmount: $loanAmount, loanTypeId: $loanTypeId, statusId: $statusId, monthlyIncome: $monthlyIncome, notes: $notes}';
+    if (agentId != null) {
+      map['agent_id'] = agentId.toString();
+    }
+
+    if (bankId != null) {
+      map['bank_id'] = bankId.toString();
+    }
+
+    // ✅ Add employee_id to payload
+    if (employeeId != null) {
+      map['assigned_to'] = employeeId.toString();
+    }
+
+    return map;
   }
 }
 

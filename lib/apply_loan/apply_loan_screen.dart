@@ -3,18 +3,36 @@ import 'package:get/get.dart';
 import 'package:starcapitalventures/app_export/app_export.dart';
 import '../app_routes.dart';
 import '../Screens/home_screen_main/controller/home_screen_controller.dart';
+import '../widgets/app_header.dart';
+
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:starcapitalventures/app_export/app_export.dart';
+import '../app_routes.dart';
+import '../Screens/home_screen_main/controller/home_screen_controller.dart';
+import '../Screens/new_application/controller/application_type_controller.dart';
+import '../Screens/new_application/model/application_type_model.dart';
+import '../widgets/app_header.dart';
 
 class ApplyLoanScreen extends StatelessWidget {
   const ApplyLoanScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Get ApplicationTypeController
+    final ApplicationTypeController typeController = ApplicationTypeController.to;
+
     return Scaffold(
       backgroundColor: const Color(0xFF4A2B1A),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(context),
+            const AppHeader(
+              height: 155,
+              topPadding: 40,
+              bottomPadding: 40,
+              showProfileAvatar: false,
+            ),
             Container(
               width: double.infinity,
               decoration: const BoxDecoration(
@@ -26,87 +44,81 @@ class ApplyLoanScreen extends StatelessWidget {
               ),
               child: Padding(
                 padding: getPadding(left: 16, top: 24, right: 16, bottom: 100),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Apply for a Loan or Service',
-                      style: TextStyle(
-                        fontSize: getFontSize(20),
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                child: Obx(() {
+                  // ✅ Show loading state
+                  if (typeController.isLoading.value) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        color: appTheme.theme,
                       ),
-                    ),
-                    SizedBox(height: getVerticalSize(20)),
-                    // Loan Types List
-                    _buildLoanTypeItem(
-                      Icons.description,
-                      'Mortgage Loan',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.home,
-                      'Home Loan',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.location_on,
-                      'Site Purchase',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.construction,
-                      'Construction',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.business,
-                      'Building Purchase',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.map,
-                      'Site Lap',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.directions_car,
-                      'Car Loan',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.person,
-                      'Personal Loan',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.business_center,
-                      'Business Loan',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.local_shipping,
-                      'Commercial Vehicle Loan',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.credit_card,
-                      'Credit Card',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.shield_outlined,
-                      'Car Insurance',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                    ),
-                    _buildLoanTypeItem(
-                      Icons.health_and_safety_outlined,
-                      'Health Insurance',
-                      () => Get.toNamed(AppRoutes.newapplication),
-                      isLast: true, // Mark the new last item
-                    ),
-                  ],
-                ),
+                    );
+                  }
+
+                  // ✅ Show error state
+                  if (typeController.errorMessage.value.isNotEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.orange.shade400,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Failed to load loan types',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => typeController.refreshApplicationTypes(),
+                            icon: Icon(Icons.refresh),
+                            label: Text('Retry'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: appTheme.theme,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // ✅ Show loan types dynamically from API
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Apply for a Loan or Service',
+                        style: TextStyle(
+                          fontSize: getFontSize(20),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: getVerticalSize(20)),
+
+                      // ✅ Dynamic loan types from API
+                      ...typeController.applicationTypes.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final loanType = entry.value;
+                        final isLast = index == typeController.applicationTypes.length - 1;
+
+                        return _buildLoanTypeItem(
+                          _getIconForLoanType(loanType.name),
+                          loanType.name,
+                              () => _navigateWithSelectedType(loanType),
+                          isLast: isLast,
+                        );
+                      }).toList(),
+                    ],
+                  );
+                }),
               ),
             ),
           ],
@@ -115,84 +127,61 @@ class ApplyLoanScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      height: getVerticalSize(140),
-      decoration: const BoxDecoration(color: Color(0xFF4A2B1A)),
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top,
-          right: getHorizontalSize(20),
-          bottom: getVerticalSize(20),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/logo.png',
-              height: getVerticalSize(100),
-              width: getHorizontalSize(150),
-            ),
-            const Spacer(),
-            Stack(
-              children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: getSize(28),
-                ),
-                Positioned(
-                  right: getHorizontalSize(2),
-                  top: getVerticalSize(2),
-                  child: Container(
-                    width: getSize(8),
-                    height: getSize(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(width: getHorizontalSize(10)),
-            GestureDetector(
-              onTap: () {
-                try {
-                  // Navigate to profile tab (index 3 for customers)
-                  final homeController =
-                      Get.find<HomeOneContainer1Controller>();
-                  homeController.selectedIndex.value = 3;
-                } catch (e) {
-                  // Fallback to direct navigation if controller not found
-                  Get.toNamed(AppRoutes.profileScreen);
-                }
-              },
-              child: CircleAvatar(
-                radius: getSize(15),
-                backgroundColor: Colors.white,
-                child: Text(
-                  'JD',
-                  style: TextStyle(
-                    color: Colors.brown,
-                    fontWeight: FontWeight.bold,
-                    fontSize: getFontSize(14),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+  // ✅ Navigate with selected loan type
+  void _navigateWithSelectedType(ApplicationTypeModel loanType) {
+    Get.toNamed(
+      AppRoutes.newapplication,
+      arguments: {'selectedApplicationType': loanType},
     );
+  }
+
+  // ✅ Map loan type names to icons
+  IconData _getIconForLoanType(String loanTypeName) {
+    final name = loanTypeName.toLowerCase();
+
+    if (name.contains('mortgage')) {
+      return Icons.description;
+    } else if (name.contains('home')) {
+      return Icons.home;
+    } else if (name.contains('site') && name.contains('purchase')) {
+      return Icons.location_on;
+    } else if (name.contains('construction')) {
+      return Icons.construction;
+    } else if (name.contains('building')) {
+      return Icons.business;
+    } else if (name.contains('lap')) {
+      return Icons.map;
+    } else if (name.contains('car') || name.contains('vehicle') || name.contains('auto')) {
+      return Icons.directions_car;
+    } else if (name.contains('personal')) {
+      return Icons.person;
+    } else if (name.contains('business')) {
+      return Icons.business_center;
+    } else if (name.contains('commercial') && name.contains('vehicle')) {
+      return Icons.local_shipping;
+    } else if (name.contains('credit') || name.contains('card')) {
+      return Icons.credit_card;
+    } else if (name.contains('insurance') && name.contains('car')) {
+      return Icons.shield_outlined;
+    } else if (name.contains('insurance') && name.contains('health')) {
+      return Icons.health_and_safety_outlined;
+    } else if (name.contains('gold')) {
+      return Icons.star;
+    } else if (name.contains('education') || name.contains('student')) {
+      return Icons.school;
+    } else if (name.contains('agriculture') || name.contains('farm')) {
+      return Icons.agriculture;
+    } else {
+      return Icons.account_balance; // Default
+    }
   }
 
   Widget _buildLoanTypeItem(
-    IconData icon,
-    String title,
-    VoidCallback onTap, {
-    bool isLast = false,
-  }) {
+      IconData icon,
+      String title,
+      VoidCallback onTap, {
+        bool isLast = false,
+      }) {
     return Padding(
       padding: EdgeInsets.only(bottom: isLast ? 0 : getVerticalSize(12)),
       child: InkWell(

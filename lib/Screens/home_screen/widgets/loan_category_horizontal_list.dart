@@ -51,7 +51,7 @@ class LoanCategoryHorizontalList extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Choose your Loan',
+                'New Loan',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
@@ -75,95 +75,30 @@ class LoanCategoryHorizontalList extends StatelessWidget {
         ),
 
         // Horizontal scrollable list - CHANGED: Show ALL items instead of just 4
+// Horizontal scrollable list
         SizedBox(
-          height: 100,
+          height: 130, // enough for 52 band + text
           child: Obx(() {
             if (controller.isLoading.value) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+              return const Center(child: CircularProgressIndicator());
             }
-
             if (controller.errorMessage.value.isNotEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      color: Colors.red[400],
-                      size: 24,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Failed to load',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.red[600],
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return const Center(child: Text('Failed to load'));
             }
-
             if (controller.applicationTypes.isEmpty) {
-              return Center(
-                child: Text(
-                  'No loan types available',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-                ),
-              );
+              return const Center(child: Text('No loan types available'));
             }
 
-            // UPDATED: Show ALL items in horizontal scroll instead of limiting to 4
-            return ListView.builder(
+            return ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: controller.applicationTypes.length, // Show ALL items
+              itemCount: controller.applicationTypes.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final applicationType = controller.applicationTypes[index];
-
-                return Container(
-                  width: 80,
-                  margin: const EdgeInsets.only(right: 16),
-                  child: GestureDetector(
-                    onTap: () => _onLoanTypeSelected(applicationType),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Icon container
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: appTheme.theme,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            _getIconForApplicationType(applicationType.name),
-                            color: appTheme.whiteA700,
-                            size: 24,
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Application type name
-                        Text(
-                          _formatLoanTypeName(applicationType.name),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
+                return LoanTypeCard(
+                  type: applicationType,
+                  onTap: () => _onLoanTypeSelected(applicationType),
                 );
               },
             );
@@ -315,6 +250,128 @@ class LoanCategoryHorizontalList extends StatelessWidget {
 
             // Safe area bottom padding
             SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+}
+class LoanTypeCard extends StatelessWidget {
+  final ApplicationTypeModel type;
+  final VoidCallback onTap;
+  const LoanTypeCard({super.key, required this.type, required this.onTap});
+
+  IconData _icon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('home') || n.contains('mortgage')) return Icons.home;
+    if (n.contains('site')) return Icons.account_balance;
+    if (n.contains('construction') || n.contains('building')) return Icons.construction;
+    if (n.contains('gold')) return Icons.star;
+    if (n.contains('business')) return Icons.business;
+    if (n.contains('personal')) return Icons.person;
+    if (n.contains('vehicle') || n.contains('car') || n.contains('auto')) return Icons.directions_car;
+    return Icons.account_balance;
+  }
+
+  @override
+  @override
+  Widget build(BuildContext context) {
+    final radius = 18.0;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(radius),
+      onTap: onTap,
+      child: Container(
+        width: 200,
+        height: 128, // a little taller for subtitle if needed
+        decoration: BoxDecoration(
+          color: appTheme.theme,
+          borderRadius: BorderRadius.circular(radius),
+
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 10,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Top colored band
+            Container(
+              height: 58,
+              decoration: BoxDecoration(
+                color: appTheme.theme ,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(radius),
+                  topRight: Radius.circular(radius),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Center(
+                  child: Container(
+                    height: 40,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Icon(
+                      _icon(type.name),
+                      size: 22,
+                      color: appTheme.theme,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom panel with inner rounded top corners and divider
+            Expanded(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Bottom panel with inner rounded corners + divider
+                  Positioned.fill(
+                 // slight gap under the band; tune as needed
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(18),
+                          topRight: Radius.circular(18),
+                        ),
+                        border: const Border(
+                          top: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          type.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Optional small overlap circle shadow below the icon
+
+                ],
+              ),
+            ),
+
           ],
         ),
       ),

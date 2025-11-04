@@ -10,7 +10,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.pageTitle,                  // when useGreeting=false, show this as the title
     this.showBack = false,
     this.onBack,
-    this.backgroundColor = Colors.white,
+    this.actions,                    // Add actions parameter for right-side buttons
+    this.backgroundColor,
     this.elevation = 0,
     this.arrowAsset = 'assets/svg/arrow.svg',
   }) : super(key: key);
@@ -26,13 +27,16 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBack;
   final VoidCallback? onBack;
 
+  // Actions (right side buttons)
+  final List<Widget>? actions;
+
   // Style
-  final Color backgroundColor;
+  final Color? backgroundColor;
   final double elevation;
   final String arrowAsset;
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 12);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight); // Standard height
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +44,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     const String greetingSubtitle = 'Here is your view';
 
     return AppBar(
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? appTheme.theme,
       elevation: elevation,
       automaticallyImplyLeading: false,
       leadingWidth: showBack ? 56 : 0,
@@ -49,15 +53,21 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: onBack ?? () => Navigator.of(context).maybePop(),
         icon: SvgPicture.asset(
           arrowAsset,
-          height: 32,
-          width: 22,
-          colorFilter:  ColorFilter.mode(appTheme.gray100, BlendMode.srcIn),
+          height: getSize(32),
+          width: getSize(22),
+          colorFilter: ColorFilter.mode(
+            appTheme.whiteA700,
+            BlendMode.srcIn,
+          ),
         ),
         tooltip: 'Back',
       )
           : null,
       titleSpacing: showBack ? 0 : 16,
       centerTitle: false,
+
+      // Actions buttons on the right
+      actions: actions,
 
       // Title switches between greeting mode and page-title mode
       title: useGreeting
@@ -66,17 +76,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         children: [
           Text(
             greetingTitle,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-              fontSize: 20,
+            style: AppTextStyles.semiBold.copyWith(
+              color: appTheme.whiteA700,
+              fontSize: getFontSize(20),
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: getVerticalSize(2)),
           Text(
             greetingSubtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.white,
+            style: AppTextStyles.regular.copyWith(
+              color: appTheme.whiteA700,
+              fontSize: getFontSize(14),
             ),
           ),
         ],
@@ -84,10 +94,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           : Text(
         pageTitle ?? '',
         overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-          fontSize: 20,
+        style: AppTextStyles.semiBold.copyWith(
+          color: appTheme.whiteA700,
+          fontSize: getFontSize(20),
         ),
       ),
     );

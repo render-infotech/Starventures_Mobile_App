@@ -17,6 +17,13 @@ class ApplicationTypeController extends GetxController {
     super.onInit();
     fetchApplicationTypes();
   }
+  static ApplicationTypeController get to {
+    if (Get.isRegistered<ApplicationTypeController>()) {
+      return Get.find<ApplicationTypeController>();
+    } else {
+      return Get.put<ApplicationTypeController>(ApplicationTypeController(), permanent: true);
+    }
+  }
 
   // Fetch application types from API
   Future<void> fetchApplicationTypes() async {
@@ -63,7 +70,24 @@ class ApplicationTypeController extends GetxController {
   Future<void> refreshApplicationTypes() async {
     await fetchApplicationTypes();
   }
+  // Method to preselect application type (useful when coming from bottom sheet)
+  void preSelectApplicationType(ApplicationTypeModel type) {
+    selectedApplicationType.value = type;
+  }
 
+  // Method to check if a specific type is available
+  bool hasApplicationType(int typeId) {
+    return applicationTypes.any((type) => type.id == typeId);
+  }
+
+  // Get application type by ID
+  ApplicationTypeModel? getApplicationTypeById(int typeId) {
+    try {
+      return applicationTypes.firstWhere((type) => type.id == typeId);
+    } catch (e) {
+      return null;
+    }
+  }
   @override
   void onClose() {
     super.onClose();

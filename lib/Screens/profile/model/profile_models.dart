@@ -1,5 +1,7 @@
 // lib/Screens/profile/models/profile_models.dart
 
+// lib/Screens/profile/models/profile_models.dart
+
 class ProfileResponse {
   final bool status;
   final ProfileData data;
@@ -17,13 +19,19 @@ class ProfileResponse {
 class ProfileData {
   final User user;
   final Employee employee;
+  final String? avatarUrl; // Add this new field
 
-  ProfileData({required this.user, required this.employee});
+  ProfileData({
+    required this.user,
+    required this.employee,
+    this.avatarUrl, // Add to constructor
+  });
 
   factory ProfileData.fromJson(Map<String, dynamic> json) {
     return ProfileData(
       user: User.fromJson(json['user'] as Map<String, dynamic>? ?? {}),
       employee: Employee.fromJson(json['employee'] as Map<String, dynamic>? ?? {}),
+      avatarUrl: json['avatar_url'] as String?, // Parse avatar_url field
     );
   }
 }
@@ -33,14 +41,16 @@ class User {
   final int? branchId;
   final String name;
   final String email;
+  final String? phone; // ✅ Add phone field
   final String? type;
-  final String? avatar; // Make sure this exists
+  final String? avatar;
 
   User({
     required this.id,
     this.branchId,
     required this.name,
     required this.email,
+    this.phone, // ✅ Add to constructor
     this.type,
     this.avatar,
   });
@@ -51,6 +61,7 @@ class User {
       branchId: json['branch_id'] as int?,
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
+      phone: json['phone'] as String?, // ✅ Parse phone field
       type: json['type'] as String?,
       avatar: json['avatar'] as String?,
     );

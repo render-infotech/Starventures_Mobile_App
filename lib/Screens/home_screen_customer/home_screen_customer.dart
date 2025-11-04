@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:starcapitalventures/app_export/app_export.dart';
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../app_routes.dart';
+import '../../widgets/app_header.dart';
+import '../emi_calculator/emi_calculator.dart';
+import '../home_screen/widgets/loan_category_horizontal_list.dart';
 import '../profile/controller/profile_controller.dart';
 import '../home_screen_main/controller/home_screen_controller.dart';
+import '../applications/controller/application_controller.dart';
+import '../applications/model/application_model.dart';
+import '../application_detail/application_details_screen.dart';
 
 class HomeScreenCustomer extends StatefulWidget {
   const HomeScreenCustomer({super.key});
@@ -14,14 +22,33 @@ class HomeScreenCustomer extends StatefulWidget {
 
 class _HomeScreenCustomerState extends State<HomeScreenCustomer> {
   late final ProfileController _profile;
+  late final ApplicationListController _applicationController;
+
+  final CarouselSliderController _carouselController = CarouselSliderController();
+  final RxInt _currentCarouselIndex = 0.obs;
 
   @override
   void initState() {
     super.initState();
-    _profile =
-        Get.isRegistered<ProfileController>()
-            ? Get.find<ProfileController>()
-            : Get.put(ProfileController());
+    _profile = Get.isRegistered<ProfileController>()
+        ? Get.find<ProfileController>()
+        : Get.put(ProfileController());
+
+    _applicationController = Get.isRegistered<ApplicationListController>()
+        ? Get.find<ApplicationListController>()
+        : Get.put(ApplicationListController());
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      print('🏠 HomeScreenCustomer: Fetching applications...');
+      await _applicationController.fetchApplications();
+    });
+  }
+
+  // ✅ Add refresh method
+  Future<void> _refreshData() async {
+    print('🔄 HomeScreenCustomer: Refresh triggered');
+    await _applicationController.fetchApplications();
+    print('✅ HomeScreenCustomer: Refresh completed');
   }
 
   String getInitials(String fullName) {
@@ -44,264 +71,374 @@ class _HomeScreenCustomerState extends State<HomeScreenCustomer> {
       final initials = getInitials(fullName);
 
       return Scaffold(
-        backgroundColor: Color(0xFF4A2B1A),
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildHeader(initials),
-              Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(
-                    0xFFF3F4F6,
-                  ), // Light grey background for the sheet
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30.0),
-                    topRight: Radius.circular(30.0),
+        backgroundColor: const Color(0xFF4A2B1A),
+        body: RefreshIndicator(  // ✅ Added RefreshIndicator
+          onRefresh: _refreshData,
+          color: appTheme.theme2,
+          backgroundColor: Colors.white,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),  // ✅ Enable pull-to-refresh
+            child: Column(
+              children: [
+                const AppHeader(height: 150, topPadding: 40, bottomPadding: 40),
+                Container(
+                  width: double.infinity,
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height - 150,  // ✅ Ensure minimum height
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30.0),
+                      topRight: Radius.circular(30.0),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: getPadding(
+                      left: 16,
+                      top: 24,
+                      right: 16,
+                      bottom: 120,  // ✅ Increased bottom padding to prevent overflow
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const LoanCategoryHorizontalList(),
+                        const SizedBox(height: 16),
+
+                        // EMI button at top
+                        EmiCalculatorButton(
+                          onTap: () {
+                            Get.toNamed(AppRoutes.emiCalculatorScreen);
+                          },
+                          background: Colors.white,
+                          foreground: Colors.brown.shade900,
+                        ),
+
+                        SizedBox(height: getVerticalSize(20)),
+
+                        // Application Status Carousel
+                        _buildApplicationStatusCarousel(),
+                      ],
+                    ),
                   ),
                 ),
-                child: Padding(
-                  padding: getPadding(
-                    left: 16,
-                    top: 24,
-                    right: 16,
-                    bottom: 100,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLoanChoiceCard(),
-                      SizedBox(height: getVerticalSize(20)),
-                      Padding(
-                        padding: getPadding(left: 10, right: 10),
-                        child: _buildApplicationStatusCard(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
     });
   }
 
-  Widget _buildHeader(String initials) {
-    return Container(
-      height: getVerticalSize(140),
-      decoration: BoxDecoration(
-        color: Color(0xFF4A2B1A),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(getSize(30)),
-          bottomRight: Radius.circular(getSize(30)),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top,
-          // left: 20,
-          right: getHorizontalSize(20),
-          bottom: getVerticalSize(20),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/logo.png', // Assuming you have a logo asset
-              height: getVerticalSize(100),
-              width: getHorizontalSize(150),
-              // fit: BoxFit.contain,
-            ),
-            const Spacer(),
-            Stack(
-              children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: getSize(28),
-                ),
-                Positioned(
-                  right: getHorizontalSize(2),
-                  top: getVerticalSize(2),
-                  child: Container(
-                    width: getSize(8),
-                    height: getSize(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(width: getHorizontalSize(10)),
-            GestureDetector(
-              onTap: () {
-                try {
-                  // Navigate to profile tab (index 3 for customers)
-                  final homeController =
-                      Get.find<HomeOneContainer1Controller>();
-                  homeController.selectedIndex.value = 3;
-                } catch (e) {
-                  // Fallback to direct navigation if controller not found
-                  Get.toNamed(AppRoutes.profileScreen);
-                }
-              },
-              child: CircleAvatar(
-                radius: getSize(15),
-                backgroundColor: Colors.white,
-                child: Text(
-                  'JD',
-                  style: TextStyle(
-                    color: Colors.brown,
-                    fontWeight: FontWeight.bold,
-                    fontSize: getFontSize(14),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoanChoiceCard() {
-    return Column(
-      children: [
-        Padding(
-          padding: getPadding(left: 10, right: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Choose your Loan',
-                style: TextStyle(
-                  fontSize: getFontSize(20),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              InkWell(
-                onTap: () {
-                  // Switch to Apply Loan tab (index 1) in bottom navigation
-                  final homeController =
-                      Get.find<HomeOneContainer1Controller>();
-                  homeController.selectedIndex.value = 1;
-                },
-                child: Text(
-                  'View All',
-                  style: TextStyle(
-                    fontSize: getFontSize(14),
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: getVerticalSize(20)),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildLoanTypeItem(Icons.home, 'Home Loan'),
-            _buildLoanTypeItem(Icons.directions_car, 'Car Loan'),
-            _buildLoanTypeItem(Icons.person, 'Personal Loan'),
-            _buildLoanTypeItem(Icons.credit_card, 'Credit Card'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoanTypeItem(IconData icon, String title) {
-    return Column(
-      children: [
-        Container(
-          width: getSize(60),
-          height: getSize(60),
+  Widget _buildApplicationStatusCarousel() {
+    return Obx(() {
+      if (_applicationController.isLoading.value) {
+        return Container(
+          width: double.infinity,
+          padding: getPadding(all: 40),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(getSize(16)),
           ),
-          child: Icon(icon, size: getSize(28), color: const Color(0xFF4A2B1A)),
-        ),
-        SizedBox(height: getVerticalSize(8)),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: getFontSize(12),
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: appTheme.theme2,
+            ),
           ),
+        );
+      }
+
+      if (_applicationController.hasError.value ||
+          _applicationController.applications.isEmpty) {
+        return _buildEmptyApplicationState();
+      }
+
+      final recentApps = _applicationController.recentApplications;
+
+      if (recentApps.length == 1) {
+        return _buildApplicationStatusCard(recentApps[0]);
+      }
+
+      return Column(
+        children: [
+          CarouselSlider.builder(
+            carouselController: _carouselController,
+            itemCount: recentApps.length,
+            itemBuilder: (context, index, realIndex) {
+              return _buildApplicationStatusCard(recentApps[index]);
+            },
+            options: CarouselOptions(
+              height: null,  // ✅ Changed to null to auto-adjust height
+              aspectRatio: 0.75,  // ✅ Added aspect ratio for better sizing
+              viewportFraction: 1.0,
+              enlargeCenterPage: false,
+              autoPlay: true,
+              autoPlayInterval: const Duration(seconds: 5),
+              autoPlayAnimationDuration: const Duration(milliseconds: 800),
+              autoPlayCurve: Curves.fastOutSlowIn,
+              onPageChanged: (index, reason) {
+                _currentCarouselIndex.value = index;
+              },
+            ),
+          ),
+
+          SizedBox(height: getVerticalSize(16)),
+          Obx(() => Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: recentApps.asMap().entries.map((entry) {
+              return GestureDetector(
+                onTap: () {
+                  _carouselController.animateToPage(
+                    entry.key,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Container(
+                  width: _currentCarouselIndex.value == entry.key ? 24.0 : 8.0,
+                  height: 8.0,
+                  margin: EdgeInsets.symmetric(
+                    horizontal: getHorizontalSize(4),
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: _currentCarouselIndex.value == entry.key
+                        ? appTheme.theme2
+                        : Colors.grey.shade400,
+                  ),
+                ),
+              );
+            }).toList(),
+          )),
+        ],
+      );
+    });
+  }
+
+  Widget _buildApplicationStatusCard(Application recentApp) {
+    final currentStatus = recentApp.status;
+
+    return GestureDetector(
+      onTap: () {
+        Get.to(() => ApplicationDetailScreen(
+          userId: '',
+          applicationId: recentApp.id,
+        ));
+      },
+      child: Container(
+        width: double.infinity,
+        margin: getMargin(left: 4, right: 4),
+        padding: getPadding(all: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE6F4F1),
+          borderRadius: BorderRadius.circular(getSize(16)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Application Status',
+                        style: TextStyle(
+                          fontSize: getFontSize(18),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: getVerticalSize(4)),
+                      Text(
+                        recentApp.loanType,
+                        style: TextStyle(
+                          fontSize: getFontSize(13),
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (recentApp.bank != null)
+                  Container(
+                    padding: getPadding(left: 10, right: 10, top: 6, bottom: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(getSize(12)),
+                      border: Border.all(
+                        color: Colors.blue.shade200,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (recentApp.bank!.bankLogo != null)
+                          Container(
+                            width: 20,
+                            height: 20,
+                            margin: getMargin(right: 6),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: CachedNetworkImage(
+                                imageUrl: recentApp.bank!.bankLogo!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Icon(
+                                  Icons.account_balance,
+                                  size: 14,
+                                  color: Colors.grey.shade400,
+                                ),
+                                errorWidget: (context, url, error) => Icon(
+                                  Icons.account_balance,
+                                  size: 14,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ),
+                            ),
+                          ),
+                        Text(
+                          recentApp.bank!.name,
+                          style: TextStyle(
+                            fontSize: getFontSize(12),
+                            color: Colors.blue.shade800,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            SizedBox(height: getVerticalSize(8)),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'ID: ${recentApp.id}',
+                  style: TextStyle(
+                    fontSize: getFontSize(12),
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                Text(
+                  recentApp.formattedAmount,
+                  style: TextStyle(
+                    fontSize: getFontSize(16),
+                    fontWeight: FontWeight.bold,
+                    color: appTheme.theme2,
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: getVerticalSize(20)),
+
+            ..._buildProgressSteps(currentStatus),
+
+            SizedBox(height: getVerticalSize(16)),
+
+            Container(
+              width: double.infinity,
+              padding: getPadding(top: 10, bottom: 10),
+              decoration: BoxDecoration(
+                color: appTheme.theme2,
+                borderRadius: BorderRadius.circular(getSize(8)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'View Full Details',
+                    style: TextStyle(
+                      fontSize: getFontSize(14),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: getHorizontalSize(6)),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildApplicationStatusCard() {
-    return Container(
-      width: double.infinity,
-      padding: getPadding(all: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE6F4F1), // Light cyan color
-        borderRadius: BorderRadius.circular(getSize(10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Application Status',
-                style: TextStyle(
-                  fontSize: getFontSize(18),
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              Container(
-                padding: getPadding(left: 12, right: 12, top: 6, bottom: 6),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(getSize(12)),
-                ),
-                child: Text(
-                  'ICICI Bank',
-                  style: TextStyle(
-                    fontSize: getFontSize(12),
-                    color: Colors.blue.shade800,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: getVerticalSize(20)),
-          _buildProgressStep('Technical', 'In progress', true, false),
-          _buildProgressStep('FI - Legal', '', false, false),
-          _buildProgressStep('PD (Personal Discussion)', '', false, false),
-          _buildProgressStep('Sanction', '', false, false),
-          _buildProgressStep('Agreement', '', false, false),
-          _buildProgressStep('MODT Registration', '', false, false),
-          _buildProgressStep('Disbursement', '', false, true),
+  List<Widget> _buildProgressSteps(String currentStatus) {
+    final statusOrder = [
+      {'name': 'Login', 'subtitle': 'Application submitted'},
+      {'name': 'Technical', 'subtitle': 'Technical verification'},
+      {'name': 'FI-Legal', 'subtitle': 'Financial & legal check'},
+      {'name': 'PD', 'subtitle': 'Personal discussion'},
+      {'name': 'Sanction', 'subtitle': 'Sanction process'},
+      {'name': 'Agreement', 'subtitle': 'Agreement signing'},
+      {'name': 'MODT-Registration', 'subtitle': 'MODT & registration'},
+      {'name': 'Disbursement', 'subtitle': 'Amount disbursement'},
+    ];
 
-          SizedBox(height: getVerticalSize(20)),
-        ],
-      ),
+    int currentIndex = statusOrder.indexWhere(
+          (status) => status['name']!.toLowerCase() == currentStatus.toLowerCase(),
     );
+    if (currentIndex == -1) currentIndex = 0;
+
+    return statusOrder.asMap().entries.map((entry) {
+      int index = entry.key;
+      Map<String, String> status = entry.value;
+
+      bool isComplete = index < currentIndex;
+      bool isActive = index == currentIndex;
+      bool isLast = index == statusOrder.length - 1;
+
+      return _buildProgressStep(
+        status['name']!,
+        status['subtitle']!,
+        isComplete,
+        isActive,
+        isLast,
+      );
+    }).toList();
   }
 
   Widget _buildProgressStep(
-    String title,
-    String subtitle,
-    bool isActive,
-    bool isLast,
-  ) {
+      String title,
+      String subtitle,
+      bool isComplete,
+      bool isActive,
+      bool isLast,
+      ) {
+    final circleColor = isComplete
+        ? const Color(0xFF22A16B)
+        : isActive
+        ? const Color(0xFFFF9800)
+        : Colors.grey.shade300;
+
+    final backgroundColor = isComplete
+        ? const Color(0xFFE8FFF4)
+        : isActive
+        ? const Color(0xFFFFF3E0)
+        : Colors.grey.shade100;
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,30 +449,51 @@ class _HomeScreenCustomerState extends State<HomeScreenCustomer> {
                 width: getSize(24),
                 height: getSize(24),
                 decoration: BoxDecoration(
-                  color: isActive ? Colors.orange : Colors.grey.shade300,
+                  color: backgroundColor,
                   shape: BoxShape.circle,
+                  border: Border.all(color: circleColor, width: 2),
                 ),
-                child: Icon(
-                  isActive ? Icons.hourglass_top : Icons.watch_later_outlined,
-                  size: getSize(14),
-                  color: isActive ? Colors.white : Colors.grey.shade600,
+                child: Center(
+                  child: isComplete
+                      ? Icon(
+                    Icons.check,
+                    size: getSize(14),
+                    color: const Color(0xFF22A16B),
+                  )
+                      : isActive
+                      ? Icon(
+                    Icons.hourglass_top,
+                    size: getSize(14),
+                    color: const Color(0xFFFF9800),
+                  )
+                      : Container(
+                    width: getSize(8),
+                    height: getSize(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ),
               ),
               if (!isLast)
                 Expanded(
                   child: Container(
                     width: getSize(2),
-                    color: Colors.grey.shade300,
+                    height: getVerticalSize(32),
+                    color: isComplete
+                        ? const Color(0xFF22A16B).withOpacity(0.3)
+                        : Colors.grey.shade300,
                   ),
                 ),
             ],
           ),
-          SizedBox(width: getHorizontalSize(16)),
+          SizedBox(width: getHorizontalSize(12)),
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(
                 top: getVerticalSize(2),
-                bottom: isLast ? 0 : getVerticalSize(32),
+                bottom: isLast ? 0 : getVerticalSize(20),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,22 +503,83 @@ class _HomeScreenCustomerState extends State<HomeScreenCustomer> {
                     style: TextStyle(
                       fontSize: getFontSize(14),
                       fontWeight: FontWeight.w600,
-                      color: isActive ? Colors.black87 : Colors.grey.shade600,
+                      color: (isActive || isComplete)
+                          ? Colors.black87
+                          : Colors.grey.shade600,
                     ),
                   ),
-                  if (subtitle.isNotEmpty) ...[
-                    SizedBox(height: getVerticalSize(2)),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: getFontSize(12),
-                        color: Colors.grey.shade500,
-                      ),
+                  SizedBox(height: getVerticalSize(2)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: getFontSize(12),
+                      color: Colors.grey.shade600,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyApplicationState() {
+    return Container(
+      width: double.infinity,
+      padding: getPadding(all: 40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(getSize(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.description_outlined,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+          SizedBox(height: getVerticalSize(16)),
+          Text(
+            'No Applications Yet',
+            style: TextStyle(
+              fontSize: getFontSize(18),
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: getVerticalSize(8)),
+          Text(
+            'Apply for a loan to see your application status here',
+            style: TextStyle(
+              fontSize: getFontSize(14),
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: getVerticalSize(20)),
+          ElevatedButton(
+            onPressed: () {
+              final homeController = Get.find<HomeOneContainer1Controller>();
+              homeController.selectedIndex.value = 1;
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: appTheme.theme2,
+              foregroundColor: Colors.white,
+              padding: getPadding(left: 24, right: 24, top: 12, bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(getSize(10)),
+              ),
+            ),
+            child: const Text('Apply for Loan'),
           ),
         ],
       ),

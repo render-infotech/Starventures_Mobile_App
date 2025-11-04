@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:starcapitalventures/app_export/app_export.dart';
 import '../../../core/data/api_client/api_client.dart';
+import '../../applications/controller/application_controller.dart';
+import '../../home_screen_main/controller/home_screen_controller.dart';
 import '../model/create_application_model.dart';
 
 class CreateApplicationController extends GetxController {
@@ -19,6 +21,7 @@ class CreateApplicationController extends GetxController {
   final amountController = TextEditingController();
   final incomeController = TextEditingController();
   final notesController = TextEditingController();
+  final coApplicantNameController = TextEditingController(); // ✅ ADD THIS
 
   // Observable variables
   var isSubmitting = false.obs;
@@ -34,13 +37,6 @@ class CreateApplicationController extends GetxController {
   // Dropdown selections - Fixed: Store string names instead of maps
   var selectedLoanType = Rx<String?>(null);
 
-  // Static loan types with proper string list
-  final List<String> loanTypes = const [
-    'Home Loan',
-    'Personal Loan',
-    'Car Loan',
-    'Education Loan',
-  ];
 
   @override
   void onInit() {
@@ -176,6 +172,13 @@ class CreateApplicationController extends GetxController {
   bool validateForm({
     required int? applicationTypeId,
     required int? applicationStatusId,
+    required int? agentId,
+    required bool requireAgent, // add this
+    required int? bankId, // ✅ Added
+    required int? employeeId, // ✅ Added
+
+    required bool requireEmployee, // ✅ Added
+
   }) {
     _clearMessages();
 
@@ -184,7 +187,10 @@ class CreateApplicationController extends GetxController {
       _setErrorMessage(validateName(nameController.text)!);
       return false;
     }
-
+    if (requireEmployee && employeeId == null) {
+      _setErrorMessage('Please select an employee');
+      return false;
+    }
     if (validatePhone(phoneController.text) != null) {
       _setErrorMessage(validatePhone(phoneController.text)!);
       return false;
@@ -200,12 +206,13 @@ class CreateApplicationController extends GetxController {
       return false;
     }
 
-    // Validate dropdowns
-    if (selectedLoanType.value == null) {
-      _setErrorMessage('Please select loan type');
+    // Remove the selectedLoanType validation
+
+
+    if (bankId == null) {
+      _setErrorMessage('Please select a bank');
       return false;
     }
-
     if (applicationTypeId == null) {
       _setErrorMessage('Please select application type');
       return false;
@@ -213,6 +220,14 @@ class CreateApplicationController extends GetxController {
 
     if (applicationStatusId == null) {
       _setErrorMessage('Please select application status');
+      return false;
+    }
+    if (requireEmployee && employeeId == null) {
+      _setErrorMessage('Please select an employee');
+      return false;
+    }
+    if (requireAgent && agentId == null) {
+      _setErrorMessage('Please select an agent');
       return false;
     }
 
@@ -230,20 +245,24 @@ class CreateApplicationController extends GetxController {
     return true;
   }
 
-  // Submit application - Fixed: Handle null safety properly
+
   Future<void> submitApplication({
     required int? applicationTypeId,
     required int? applicationStatusId,
+    int? agentId,
+    required bool requireAgent,
+    int? bankId,
+    int? employeeId,
+    required bool requireEmployee,
   }) async {
-    // Check for null values before validation
-    if (applicationTypeId == null || applicationStatusId == null) {
-      _setErrorMessage('Please select both application type and status');
-      return;
-    }
-
     if (!validateForm(
       applicationTypeId: applicationTypeId,
       applicationStatusId: applicationStatusId,
+      agentId: agentId,
+      requireAgent: requireAgent,
+      bankId: bankId,
+      employeeId: employeeId,
+      requireEmployee: requireEmployee,
     )) {
       return;
     }
@@ -252,35 +271,46 @@ class CreateApplicationController extends GetxController {
       isSubmitting(true);
       _clearMessages();
 
-      // Get loan type ID safely
-      final loanTypeId = getLoanTypeId(selectedLoanType.value!);
-
-      // Create application model matching API payload
       final applicationData = CreateApplicationModel(
         customerName: nameController.text.trim(),
+        coApplicantName: coApplicantNameController.text.trim().isNotEmpty
+            ? coApplicantNameController.text.trim()
+            : null, // ✅ ADD THIS
         phoneNumber: phoneController.text.trim(),
         email: emailController.text.trim(),
         loanAmount: amountController.text.trim(),
-        loanTypeId: loanTypeId,
-        statusId: applicationStatusId, // Now guaranteed to be non-null
+        loanTypeId: applicationTypeId!,
+        statusId: applicationStatusId!,
+        agentId: requireAgent ? agentId : null,
         monthlyIncome: incomeController.text.trim(),
         notes: notesController.text.trim(),
         aadhaarFile: aadhaarFile.value,
         panCardFile: panFile.value,
+        bankId: bankId,
+        employeeId: requireEmployee ? employeeId : null,
       );
 
-      print('Submitting application: $applicationData');
-
-      // Submit to API with compression
       final response = await _apiClient.createApplication(applicationData);
+      print('Submitting application with Agent ID: $agentId');
 
       if (response.success) {
         _setSuccessMessage(response.message.isNotEmpty
             ? response.message
             : 'Application submitted successfully!');
+
         _clearForm();
 
-        // Show success dialog and navigate back
+        // ✅ STEP 1: Refresh ApplicationListController
+        print('🔄 Refreshing applications list...');
+        if (Get.isRegistered<ApplicationListController>()) {
+          final appController = Get.find<ApplicationListController>();
+          await appController.refreshApplications();
+          print('✅ Applications list refreshed');
+        } else {
+          print('⚠️ ApplicationListController not registered');
+        }
+
+        // ✅ STEP 2: Show success dialog
         Get.dialog(
           AlertDialog(
             backgroundColor: appTheme.whiteA700,
@@ -289,12 +319,18 @@ class CreateApplicationController extends GetxController {
                 ? response.message
                 : 'Application submitted successfully!'),
             actions: [
-
               CustomElevatedButton(
                 text: 'OK',
                 onPressed: () {
                   Get.back(); // Close dialog
-                  Get.back(); // Go back to previous screen
+                  Get.back(); // Close form screen
+
+                  // ✅ STEP 3: Navigate to Applications tab
+                  if (Get.isRegistered<HomeOneContainer1Controller>()) {
+                    final homeController = Get.find<HomeOneContainer1Controller>();
+                    homeController.selectedIndex.value = 2; // Applications tab
+                    print('📱 Navigated to Applications tab');
+                  }
                 },
                 buttonStyle: ElevatedButton.styleFrom(
                   backgroundColor: appTheme.theme,
@@ -319,6 +355,7 @@ class CreateApplicationController extends GetxController {
             ? response.message
             : 'Failed to submit application');
       }
+
     } catch (e) {
       _setErrorMessage('Failed to submit application: $e');
       print('Error submitting application: $e');
@@ -327,9 +364,12 @@ class CreateApplicationController extends GetxController {
     }
   }
 
+
   // Clear form data
   void _clearForm() {
     nameController.clear();
+    coApplicantNameController.clear(); // ✅ ADD THIS
+
     phoneController.clear();
     emailController.clear();
     amountController.clear();
@@ -370,6 +410,8 @@ class CreateApplicationController extends GetxController {
     // Dispose text controllers
     nameController.dispose();
     phoneController.dispose();
+    coApplicantNameController.dispose(); // ✅ ADD THIS
+
     emailController.dispose();
     amountController.dispose();
     incomeController.dispose();

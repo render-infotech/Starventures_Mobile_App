@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:starcapitalventures/Screens/profile/widgets/log_out_dialog.dart';
 
+import '../../widgets/app_header.dart';
 import 'controller/profile_controller.dart';
 import 'logout_controller.dart';
 import 'package:starcapitalventures/app_export/app_export.dart';
@@ -21,26 +22,68 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final ProfileController _controller;
   late final LogoutController _logout;
 
+  // ✅ Create controllers once in initState
+  late final TextEditingController nameCtrl;
+  late final TextEditingController emailCtrl;
+  late final TextEditingController phoneCtrl;
+  late final TextEditingController empIdCtrl;
+
+  // Store initial values on init
+  late String _initialName;
+  late String _initialEmail;
+  late String? _initialImagePath;
+
+  // Track if update was pressed
+  bool _updatePressed = false;
+
   @override
   void initState() {
     super.initState();
     _controller = Get.find<ProfileController>();
     _logout = Get.put(LogoutController());
+
+    // ✅ Initialize controllers with current values
+    nameCtrl = TextEditingController(text: _controller.userName.value);
+    emailCtrl = TextEditingController(text: _controller.userEmail.value);
+    phoneCtrl = TextEditingController(text: _controller.userPhone.value);
+    empIdCtrl = TextEditingController(text: _controller.employeeId.value);
+
+    // Save initial state
+    _initialName = _controller.userName.value;
+    _initialEmail = _controller.userEmail.value;
+    _initialImagePath = _controller.pickedImagePath.value;
+  }
+
+  @override
+  void dispose() {
+    // ✅ Dispose controllers
+    nameCtrl.dispose();
+    emailCtrl.dispose();
+    phoneCtrl.dispose();
+    empIdCtrl.dispose();
+
+    // If update wasn't pressed, reset to initial values
+    if (!_updatePressed) {
+      _controller.userName.value = _initialName;
+      _controller.userEmail.value = _initialEmail;
+      _controller.pickedImagePath.value = _initialImagePath;
+    }
+    super.dispose();
   }
 
   String _initials(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return '';
     final parts =
-        trimmed.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    trimmed.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     final first =
-        parts.isNotEmpty && parts.first.isNotEmpty
-            ? parts.first.characters.first
-            : '';
+    parts.isNotEmpty && parts.first.isNotEmpty
+        ? parts.first.characters.first
+        : '';
     final last =
-        parts.length > 1 && parts.last.isNotEmpty
-            ? parts.last.characters.first
-            : '';
+    parts.length > 1 && parts.last.isNotEmpty
+        ? parts.last.characters.first
+        : '';
     final init = (first + last).isEmpty ? first : (first + last);
     return init.toUpperCase();
   }
@@ -48,30 +91,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final showEmpId = _controller.role.value == 'employee';
+      final role = _controller.role.value.toLowerCase();
+      final hasEmployeeId = _controller.employeeId.value.isNotEmpty;
+      final showEmpId = (role == 'employee' || role == 'manager') && hasEmployeeId;
       final name = _controller.userName.value;
       final initials = name.isEmpty ? '' : _initials(name);
       final pickedPath = _controller.pickedImagePath.value;
-
-      // Controllers created from latest Rx values each build to keep UI in sync
-      final nameCtrl = TextEditingController(text: _controller.userName.value);
-      final emailCtrl = TextEditingController(
-        text: _controller.userEmail.value,
-      );
-      final phoneCtrl = TextEditingController(
-        text: _controller.userPhone.value,
-      );
-      final empIdCtrl = TextEditingController(
-        text: _controller.employeeId.value,
-      );
 
       return Scaffold(
         backgroundColor: const Color(0xFF1E2A38),
         body: Stack(
           children: [
-            _buildHeader(context),
+            const AppHeader(
+              height: 160,
+              topPadding: 40,
+              bottomPadding: 40,
+              showProfileAvatar: false,
+            ),
             Padding(
-              padding: EdgeInsets.only(top: getVerticalSize(130)),
+              padding: EdgeInsets.only(top: getVerticalSize(160)),
               child: Container(
                 width: double.infinity,
                 height: double.infinity,
@@ -82,368 +120,303 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     topRight: Radius.circular(getSize(30)),
                   ),
                 ),
-                child:
-                    _controller.profileLoading.value
-                        ? const Center(child: CircularProgressIndicator())
-                        : SingleChildScrollView(
-                          padding: getPadding(
-                            left: 16,
-                            right: 16,
-                            top: 24,
-                            bottom: 24,
+                child: _controller.profileLoading.value
+                    ? const Center(child: CircularProgressIndicator())
+                    : SingleChildScrollView(
+                  padding: getPadding(
+                    left: 16,
+                    right: 16,
+                    top: 24,
+                    bottom: 24,
+                  ),
+                  child: Column(
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: _controller.loading.value
+                                ? null
+                                : _controller.pickImage,
+                            child: Container(
+                              width: getSize(70),
+                              height: getSize(70),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF4A2B1A),
+                                shape: BoxShape.circle,
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              alignment: Alignment.center,
+                              child: _buildAvatarImage(
+                                context,
+                                pickedPath,
+                                initials,
+                              ),
+                            ),
                           ),
-                          child: Column(
+                          SizedBox(height: getVerticalSize(6)),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  GestureDetector(
-                                    onTap:
-                                        _controller.loading.value
-                                            ? null
-                                            : _controller.pickImage,
-                                    child: Container(
-                                      width: getSize(70),
-                                      height: getSize(70),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF4A2B1A),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      clipBehavior: Clip.antiAlias,
-                                      alignment: Alignment.center,
-                                      child: _buildAvatarImage(
-                                        context,
-                                        pickedPath,
-                                        initials,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: getVerticalSize(6)),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name.isEmpty ? ' ' : name,
-                                        style: TextStyle(
-                                          fontSize: getFontSize(18),
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                      SizedBox(height: getVerticalSize(4)),
-                                      if (showEmpId &&
-                                          _controller
-                                              .employeeId
-                                              .value
-                                              .isNotEmpty)
-                                        Text(
-                                          'Employee ID: ${_controller.employeeId.value}',
-                                          style: TextStyle(
-                                            fontSize: getFontSize(13),
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
+                              Text(
+                                name.isEmpty ? ' ' : name,
+                                style: TextStyle(
+                                  fontSize: getFontSize(18),
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
                               ),
-                              SizedBox(height: getVerticalSize(10)),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Full Name',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelLarge?.copyWith(
-                                      color: const Color(0xFF1A2036),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: getFontSize(13),
-                                    ),
-                                  ),
-                                  SizedBox(height: getVerticalSize(8)),
-                                  CustomTextFormField(
-                                    controller: nameCtrl,
-                                    hintText: 'Enter full name',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: getPadding(
-                                      left: 14,
-                                      right: 14,
-                                      top: 14,
-                                      bottom: 14,
-                                    ),
-                                    defaultBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    enabledBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    focusedBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    onChanged:
-                                        (v) => _controller.userName.value = v,
-                                  ),
-
-                                  SizedBox(height: getVerticalSize(16)),
-
-                                  Text(
-                                    'Email Address',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelLarge?.copyWith(
-                                      color: const Color(0xFF1A2036),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: getFontSize(13),
-                                    ),
-                                  ),
-                                  SizedBox(height: getVerticalSize(8)),
-                                  CustomTextFormField(
-                                    controller: emailCtrl,
-                                    hintText: 'Email Address',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: getPadding(
-                                      left: 14,
-                                      right: 14,
-                                      top: 14,
-                                      bottom: 14,
-                                    ),
-                                    defaultBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    enabledBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    focusedBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    onChanged:
-                                        (v) => _controller.userEmail.value = v,
-                                  ),
-                                  SizedBox(height: getVerticalSize(16)),
-                                  Text(
-                                    'Phone Number',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelLarge?.copyWith(
-                                      color: const Color(0xFF1A2036),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: getFontSize(13),
-                                    ),
-                                  ),
-                                  SizedBox(height: getVerticalSize(8)),
-                                  CustomTextFormField(
-                                    readOnly: true,
-                                    controller: phoneCtrl,
-                                    hintText: 'Phone Number',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: getPadding(
-                                      left: 14,
-                                      right: 14,
-                                      top: 14,
-                                      bottom: 14,
-                                    ),
-                                    defaultBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    enabledBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    focusedBorderDecoration: OutlineInputBorder(
-                                      borderRadius: AppRadii.lg,
-                                      borderSide: BorderSide(
-                                        color: appTheme.blueGray10001,
-                                        width: 1,
-                                      ),
-                                    ),
-                                  ),
-
-                                  if (showEmpId) ...[
-                                    Text(
-                                      'Employee ID',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.labelLarge?.copyWith(
-                                        color: const Color(0xFF1A2036),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: getFontSize(13),
-                                      ),
-                                    ),
-                                    SizedBox(height: getVerticalSize(8)),
-                                    CustomTextFormField(
-                                      readOnly: true,
-                                      controller: empIdCtrl,
-                                      hintText: 'Employee ID',
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      contentPadding: getPadding(
-                                        left: 14,
-                                        right: 14,
-                                        top: 14,
-                                        bottom: 14,
-                                      ),
-                                      defaultBorderDecoration:
-                                          OutlineInputBorder(
-                                            borderRadius: AppRadii.lg,
-                                            borderSide: BorderSide(
-                                              color: appTheme.blueGray10001,
-                                              width: 1,
-                                            ),
-                                          ),
-                                      enabledBorderDecoration:
-                                          OutlineInputBorder(
-                                            borderRadius: AppRadii.lg,
-                                            borderSide: BorderSide(
-                                              color: appTheme.blueGray10001,
-                                              width: 1,
-                                            ),
-                                          ),
-                                      focusedBorderDecoration:
-                                          OutlineInputBorder(
-                                            borderRadius: AppRadii.lg,
-                                            borderSide: BorderSide(
-                                              color: appTheme.blueGray10001,
-                                              width: 1,
-                                            ),
-                                          ),
-                                    ),
-                                  ],
-
-                                  SizedBox(height: getVerticalSize(25)),
-
-                                  Obx(
-                                    () => CustomElevatedButton(
-                                      text:
-                                          _controller.loading.value
-                                              ? 'Updating...'
-                                              : 'Update Profile',
-                                      height: getVerticalSize(48),
-                                      width: double.infinity,
-                                      buttonStyle: ElevatedButton.styleFrom(
-                                        minimumSize: Size(
-                                          double.infinity,
-                                          getVerticalSize(48),
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: AppRadii.lg,
-                                        ),
-                                        backgroundColor: appTheme.theme2,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      buttonTextStyle: Theme.of(
-                                        context,
-                                      ).textTheme.titleSmall?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      onPressed:
-                                          _controller.loading.value
-                                              ? null
-                                              : () {
-                                                _controller.userName.value =
-                                                    nameCtrl.text.trim();
-                                                _controller.userEmail.value =
-                                                    emailCtrl.text.trim();
-                                                _controller.submitUpdate();
-                                              },
-                                    ),
-                                  ),
-
-                                  SizedBox(height: getVerticalSize(25)),
-
-                                  Obx(
-                                    () => GestureDetector(
-                                      onTap:
-                                          _controller.loading.value
-                                              ? null
-                                              : () async {
-                                                final confirm =
-                                                    await showLogoutDialog(
-                                                      context,
-                                                    );
-                                                if (confirm) {
-                                                  await _logout.performLogout(
-                                                    context,
-                                                  );
-                                                }
-                                              },
-                                      child: Center(
-                                        child: ClipOval(
-                                          child: Container(
-                                            color:
-                                                _controller.loading.value
-                                                    ? appTheme.blue50
-                                                        .withValues(alpha: 0.5)
-                                                    : appTheme.blue50,
-                                            width: getHorizontalSize(50),
-                                            height: getHorizontalSize(50),
-                                            child:
-                                                _controller.loading.value
-                                                    ? Center(
-                                                      child: SizedBox(
-                                                        width: getSize(20),
-                                                        height: getSize(20),
-                                                        child: CircularProgressIndicator(
-                                                          strokeWidth: getSize(
-                                                            2,
-                                                          ),
-                                                          valueColor:
-                                                              AlwaysStoppedAnimation<
-                                                                Color
-                                                              >(appTheme.theme),
-                                                        ),
-                                                      ),
-                                                    )
-                                                    : SvgPicture.asset(
-                                                      ImageConstant.logout,
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              SizedBox(height: getVerticalSize(4)),
+                              if (showEmpId &&
+                                  _controller.employeeId.value.isNotEmpty)
+                                Text(
+                                  'Employee ID: ${_controller.employeeId.value}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: Colors.black45),
+                                ),
                             ],
                           ),
-                        ),
+                        ],
+                      ),
+                      SizedBox(height: getVerticalSize(10)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Full Name',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelLarge?.copyWith(
+                              color: const Color(0xFF1A2036),
+                              fontWeight: FontWeight.w600,
+                              fontSize: getFontSize(13),
+                            ),
+                          ),
+                          SizedBox(height: getVerticalSize(8)),
+                          CustomTextFormField(
+                            controller: nameCtrl, // ✅ Using persistent controller
+                            hintText: 'Enter full name',
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: getPadding(
+                              left: 14,
+                              right: 14,
+                              top: 14,
+                              bottom: 14,
+                            ),
+                            defaultBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            enabledBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            // ✅ REMOVED onChanged - controllers handle this automatically
+                          ),
+
+                          SizedBox(height: getVerticalSize(16)),
+
+                          Text(
+                            'Email Address',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelLarge?.copyWith(
+                              color: const Color(0xFF1A2036),
+                              fontWeight: FontWeight.w600,
+                              fontSize: getFontSize(13),
+                            ),
+                          ),
+                          SizedBox(height: getVerticalSize(8)),
+                          CustomTextFormField(
+                            controller: emailCtrl, // ✅ Using persistent controller
+                            hintText: 'Email Address',
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: getPadding(
+                              left: 14,
+                              right: 14,
+                              top: 14,
+                              bottom: 14,
+                            ),
+                            defaultBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            enabledBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            // ✅ REMOVED onChanged
+                          ),
+                          SizedBox(height: getVerticalSize(16)),
+                          Text(//this one we are in agent profiel
+                            'Phone Number',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelLarge?.copyWith(
+                              color: const Color(0xFF1A2036),
+                              fontWeight: FontWeight.w600,
+                              fontSize: getFontSize(13),
+                            ),
+                          ),
+                          SizedBox(height: getVerticalSize(8)),
+                          CustomTextFormField(
+                            readOnly: true,
+                            controller: phoneCtrl,
+                            hintText: 'Phone Number',
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: getPadding(
+                              left: 14,
+                              right: 14,
+                              top: 14,
+                              bottom: 14,
+                            ),
+                            defaultBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            enabledBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorderDecoration: OutlineInputBorder(
+                              borderRadius: AppRadii.lg,
+                              borderSide: BorderSide(
+                                color: appTheme.blueGray10001,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+
+                          if (showEmpId) ...[
+                            SizedBox(height: getVerticalSize(16)),
+                            Text(
+                              'Employee ID',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.labelLarge?.copyWith(
+                                color: const Color(0xFF1A2036),
+                                fontWeight: FontWeight.w600,
+                                fontSize: getFontSize(13),
+                              ),
+                            ),
+                            SizedBox(height: getVerticalSize(8)),
+                            CustomTextFormField(
+                              readOnly: true,
+                              controller: empIdCtrl,
+                              hintText: 'Employee ID',
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: getPadding(
+                                left: 14,
+                                right: 14,
+                                top: 14,
+                                bottom: 14,
+                              ),
+                              defaultBorderDecoration: OutlineInputBorder(
+                                borderRadius: AppRadii.lg,
+                                borderSide: BorderSide(
+                                  color: appTheme.blueGray10001,
+                                  width: 1,
+                                ),
+                              ),
+                              enabledBorderDecoration: OutlineInputBorder(
+                                borderRadius: AppRadii.lg,
+                                borderSide: BorderSide(
+                                  color: appTheme.blueGray10001,
+                                  width: 1,
+                                ),
+                              ),
+                              focusedBorderDecoration: OutlineInputBorder(
+                                borderRadius: AppRadii.lg,
+                                borderSide: BorderSide(
+                                  color: appTheme.blueGray10001,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          SizedBox(height: getVerticalSize(25)),
+
+                          Obx(
+                                () => CustomElevatedButton(
+                              text: _controller.loading.value
+                                  ? 'Updating...'
+                                  : 'Update Profile',
+                              height: getVerticalSize(48),
+                              width: double.infinity,
+                              buttonStyle: ElevatedButton.styleFrom(
+                                minimumSize: Size(
+                                    double.infinity, getVerticalSize(48)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: AppRadii.lg),
+                                backgroundColor: appTheme.theme2,
+                                foregroundColor: Colors.white,
+                              ),
+                              buttonTextStyle: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              onPressed: _controller.loading.value
+                                  ? null
+                                  : () {
+                                _updatePressed = true;
+                                // ✅ Get values from controllers
+                                _controller.userName.value =
+                                    nameCtrl.text.trim();
+                                _controller.userEmail.value =
+                                    emailCtrl.text.trim();
+                                _controller.submitUpdate();
+                              },
+                            ),
+                          ),
+
+                          SizedBox(height: getVerticalSize(25)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -452,84 +425,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      height: getVerticalSize(140),
-      decoration: const BoxDecoration(color: Color(0xFF4A2B1A)),
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top,
-          right: getHorizontalSize(20),
-          bottom: getVerticalSize(20),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Back button
-            GestureDetector(
-              onTap: () => Get.back(),
-              child: Padding(
-                padding: EdgeInsets.only(left: getHorizontalSize(20)),
-                child: Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
-                  size: getSize(24),
-                ),
-              ),
-            ),
-
-            // Logo
-            Image.asset(
-              'assets/images/logo.png',
-              height: getVerticalSize(100),
-              width: getHorizontalSize(150),
-            ),
-            const Spacer(),
-            Stack(
-              children: [
-                Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: getSize(28),
-                ),
-                Positioned(
-                  right: getHorizontalSize(2),
-                  top: getVerticalSize(2),
-                  child: Container(
-                    width: getSize(8),
-                    height: getSize(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(width: getHorizontalSize(10)),
-            // CircleAvatar(
-            //   radius: getSize(15),
-            //   backgroundColor: Colors.white,
-            //   child: Text(
-            //     'JD',
-            //     style: TextStyle(
-            //       color: Colors.brown,
-            //       fontWeight: FontWeight.bold,
-            //       fontSize: getFontSize(14),
-            //     ),
-            //   ),
-            // ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildAvatarImage(
-    BuildContext context,
-    String? pickedPath,
-    String initials,
-  ) {
+      BuildContext context,
+      String? pickedPath,
+      String initials,
+      ) {
     // Priority: 1. Picked local image, 2. Server avatar, 3. Initials
     if (pickedPath != null && pickedPath.isNotEmpty) {
       return Image.file(

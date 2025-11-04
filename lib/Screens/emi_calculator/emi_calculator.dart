@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../app_export/app_export.dart';
+import '../../app_export/app_export.dart';
 class EmiCalculatorButton extends StatelessWidget {
   final VoidCallback onTap;
   final String title;
@@ -22,11 +22,11 @@ class EmiCalculatorButton extends StatelessWidget {
     final radius = 14.0;
 
     return Padding(
-      padding: getPadding(left: 8,right: 8),
+      padding: getPadding(left: 10,right: 10),
       child: Material(
         color: bg,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(.08),
+        shadowColor: Colors.black.withOpacity(.5),
         borderRadius: BorderRadius.circular(radius),
         child: InkWell(
           onTap: onTap,

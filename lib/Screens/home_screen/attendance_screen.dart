@@ -2,10 +2,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:starcapitalventures/Screens/home_screen/controller/AttendanceController.dart';
+import 'package:starcapitalventures/app_routes.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:starcapitalventures/app_export/app_export.dart';
-import '../home_screen/model/dashboard_model.dart';
-import 'controller/AttendanceController.dart';
+
+import '../../widgets/custom_app_bar.dart';
+import 'model/attendance_model.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -29,27 +32,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: appTheme.whiteA700,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF4A2B1A),
-        title: const Text(
-          'Attendance',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Get.back(),
-        ),
-        elevation: 0,
+      appBar: CustomAppBar(
+        useGreeting: false,
+        pageTitle: 'Attendance',
+        showBack: true,
+        onBack: () => Get.back(),
+        backgroundColor: appTheme.theme,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: Icon(Icons.refresh, color: appTheme.whiteA700),
             onPressed: () => _controller.refreshAttendance(),
           ),
         ],
-      ),
-      body: Obx(() {
+      ),      body: Obx(() {
         if (_controller.loading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              color: appTheme.theme,
+            ),
+          );
         }
 
         return SingleChildScrollView(
@@ -57,15 +58,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             children: [
               // Calendar Section
               Container(
-                margin: const EdgeInsets.all(16),
+                margin: EdgeInsets.all(getSize(16)),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  color: appTheme.whiteA700,
+                  borderRadius: BorderRadius.circular(getSize(16)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: appTheme.shadowColor,
+                      blurRadius: getSize(10),
+                      offset: Offset(0, getVerticalSize(4)),
                     ),
                   ],
                 ),
@@ -75,50 +76,56 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   focusedDay: _controller.focusedDay.value,
                   calendarFormat: _controller.calendarFormat.value,
 
-                  // Events
+                  // Events for markers
                   eventLoader: _controller.getEventsForDay,
 
                   // Styling
                   calendarStyle: CalendarStyle(
                     outsideDaysVisible: false,
-                    weekendTextStyle: TextStyle(color: Colors.red.shade700),
-                    holidayTextStyle: TextStyle(color: Colors.blue.shade700),
-
-                    // Today styling
+                    weekendTextStyle: AppTextStyles.medium.copyWith(
+                      color: appTheme.red500,
+                      fontSize: getFontSize(14),
+                    ),
+                    holidayTextStyle: AppTextStyles.medium.copyWith(
+                      color: appTheme.blue900,
+                      fontSize: getFontSize(14),
+                    ),
                     todayDecoration: BoxDecoration(
-                      color: const Color(0xFF4A2B1A),
+                      color: appTheme.theme,
                       shape: BoxShape.circle,
                     ),
-
-                    // Selected day styling
                     selectedDecoration: BoxDecoration(
-                      color: Colors.orange.shade600,
+                      color: appTheme.orange600,
                       shape: BoxShape.circle,
                     ),
-
-                    // Marker styling
                     markerDecoration: BoxDecoration(
-                      color: Colors.green,
+                      color: appTheme.green400,
                       shape: BoxShape.circle,
                     ),
                   ),
 
-                  // Header styling
-                  headerStyle: const HeaderStyle(
+                  headerStyle: HeaderStyle(
                     formatButtonVisible: true,
                     titleCentered: true,
                     formatButtonShowsNext: false,
                     formatButtonDecoration: BoxDecoration(
-                      color: Color(0xFF4A2B1A),
-                      borderRadius: BorderRadius.all(Radius.circular(12.0)),
+                      color: appTheme.theme,
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(getSize(12)),
+                      ),
                     ),
-                    formatButtonTextStyle: TextStyle(color: Colors.white),
+                    formatButtonTextStyle: AppTextStyles.medium.copyWith(
+                      color: appTheme.whiteA700,
+                      fontSize: getFontSize(14),
+                    ),
+                    titleTextStyle: AppTextStyles.semiBold.copyWith(
+                      fontSize: getFontSize(16),
+                    ),
                   ),
 
-                  // Day selection
-                  selectedDayPredicate: (day) {
-                    return isSameDay(_controller.selectedDay.value, day);
-                  },
+                  // Selection + navigation
+                  selectedDayPredicate: (day) =>
+                      isSameDay(_controller.selectedDay.value, day),
 
                   onDaySelected: _controller.onDaySelected,
 
@@ -128,6 +135,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                   onPageChanged: (focusedDay) {
                     _controller.focusedDay.value = focusedDay;
+                    _controller.fetchMonth(focusedDay.year, focusedDay.month);
                   },
 
                   // Custom builders
@@ -143,13 +151,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               color: _controller.getStatusColor(attendance),
                               shape: BoxShape.circle,
                             ),
-                            width: 16.0,
-                            height: 16.0,
+                            width: getSize(16),
+                            height: getSize(16),
                             child: Center(
                               child: Icon(
                                 _getStatusIcon(attendance.status),
-                                color: Colors.white,
-                                size: 10.0,
+                                color: appTheme.whiteA700,
+                                size: getSize(10),
                               ),
                             ),
                           ),
@@ -164,16 +172,62 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               // Legend
               _buildLegend(),
 
-              const SizedBox(height: 16),
+              SizedBox(height: getVerticalSize(16)),
 
-              // Selected Day Details - Use Container instead of Expanded
-              Container(
-                height: 300, // Fixed height instead of Expanded
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: getHorizontalSize(16)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    CustomElevatedButton(
+                      text: 'Request Leave',
+                      height: getVerticalSize(44),
+                      width: getHorizontalSize(140),
+                      buttonStyle: ElevatedButton.styleFrom(
+                        minimumSize: Size(getHorizontalSize(140), getVerticalSize(44)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(getSize(12)),
+                        ),
+                        backgroundColor: appTheme.theme,
+                        foregroundColor: appTheme.whiteA700,
+                      ),
+                      buttonTextStyle: AppTextStyles.semiBold.copyWith(
+                        color: appTheme.whiteA700,
+                        fontSize: getFontSize(16),
+                      ),
+                      onPressed: () => Get.toNamed(AppRoutes.leaverequestScreen),
+                    ),
+                    const Spacer(),
+                    CustomElevatedButton(
+                      text: 'View Leaves',
+                      height: getVerticalSize(44),
+                      width: getHorizontalSize(140),
+                      buttonStyle: ElevatedButton.styleFrom(
+                        minimumSize: Size(getHorizontalSize(140), getVerticalSize(44)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(getSize(12)),
+                        ),
+                        backgroundColor: appTheme.whiteA700,
+                        foregroundColor: appTheme.theme,
+                        side: BorderSide(color: appTheme.theme, width: 1),
+                      ),
+                      buttonTextStyle: AppTextStyles.semiBold.copyWith(
+                        color: appTheme.theme,
+                        fontSize: getFontSize(16),
+                      ),
+                      onPressed: () => Get.toNamed(AppRoutes.viewLeaves),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Selected Day Details
+              SizedBox(
+                height: getVerticalSize(300),
                 child: _buildAttendanceDetails(),
               ),
 
-              // Add some bottom padding
-              const SizedBox(height: 20),
+              SizedBox(height: getVerticalSize(20)),
             ],
           ),
         );
@@ -183,19 +237,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildLegend() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(horizontal: getHorizontalSize(16)),
+      padding: EdgeInsets.all(getSize(16)),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
+        color: appTheme.gray100,
+        borderRadius: BorderRadius.circular(getSize(12)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildLegendItem(Colors.green, "Present"),
-          _buildLegendItem(Colors.orange, "Late"),
-          _buildLegendItem(Colors.red, "Absent"),
-          _buildLegendItem(Colors.blue, "Holiday"),
+          _buildLegendItem(appTheme.green400, "Present"),
+          _buildLegendItem(appTheme.orange600, "Late"),
+          _buildLegendItem(appTheme.red500, "Absent"),
+          _buildLegendItem(appTheme.blue900, "Holiday"),
         ],
       ),
     );
@@ -206,17 +260,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: getSize(12),
+          height: getSize(12),
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: getHorizontalSize(4)),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          style: AppTextStyles.medium.copyWith(
+            fontSize: getFontSize(12),
+          ),
         ),
       ],
     );
@@ -228,22 +284,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final attendance = _controller.selectedDayAttendance.value;
 
       if (selectedDate == null) {
-        return const Center(
-          child: Text('Select a date to view attendance details'),
+        return Center(
+          child: Text(
+            'Select a date to view attendance details',
+            style: AppTextStyles.regular.copyWith(
+              fontSize: getFontSize(14),
+              color: appTheme.gray700,
+            ),
+          ),
         );
       }
 
       return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(20),
+        margin: EdgeInsets.all(getSize(16)),
+        padding: EdgeInsets.all(getSize(20)),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: appTheme.whiteA700,
+          borderRadius: BorderRadius.circular(getSize(16)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: appTheme.shadowColor,
+              blurRadius: getSize(10),
+              offset: Offset(0, getVerticalSize(4)),
             ),
           ],
         ),
@@ -254,31 +316,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  // Rest of your methods remain the same...
   Widget _buildNoAttendanceData(DateTime date) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
           Icons.calendar_today_outlined,
-          size: 48,
-          color: Colors.grey.shade400,
+          size: getSize(48),
+          color: appTheme.blueGray400,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: getVerticalSize(16)),
         Text(
           'No attendance data',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
+          style: AppTextStyles.semiBold.copyWith(
+            fontSize: getFontSize(16),
+            color: appTheme.gray700,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: getVerticalSize(8)),
         Text(
           'for ${_formatSelectedDate(date)}',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade500,
+          style: AppTextStyles.regular.copyWith(
+            fontSize: getFontSize(14),
+            color: appTheme.gray500,
           ),
         ),
       ],
@@ -295,16 +355,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           children: [
             Text(
               _formatSelectedDate(_controller.selectedDay.value!),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+              style: AppTextStyles.semiBold.copyWith(
+                fontSize: getFontSize(18),
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(
+                horizontal: getHorizontalSize(12),
+                vertical: getVerticalSize(6),
+              ),
               decoration: BoxDecoration(
                 color: _controller.getStatusColor(attendance).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(getSize(20)),
                 border: Border.all(
                   color: _controller.getStatusColor(attendance),
                   width: 1,
@@ -312,17 +374,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
               child: Text(
                 attendance.status,
-                style: TextStyle(
+                style: AppTextStyles.semiBold.copyWith(
                   color: _controller.getStatusColor(attendance),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
+                  fontSize: getFontSize(12),
                 ),
               ),
             ),
           ],
         ),
 
-        const SizedBox(height: 20),
+        SizedBox(height: getVerticalSize(20)),
 
         // Time details
         _buildTimeRow("Clock In", _controller.formatTime(attendance.clockIn)),
@@ -338,29 +399,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildTimeRow(String label, String value, {bool isWarning = false, bool isPositive = false}) {
-    Color valueColor = Colors.black87;
-    if (isWarning) valueColor = Colors.orange.shade700;
-    if (isPositive) valueColor = Colors.green.shade700;
+  Widget _buildTimeRow(String label, String value,
+      {bool isWarning = false, bool isPositive = false}) {
+    Color valueColor = appTheme.black900;
+    if (isWarning) valueColor = appTheme.orange600;
+    if (isPositive) valueColor = appTheme.green400;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: getVerticalSize(12)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
+            style: AppTextStyles.medium.copyWith(
+              fontSize: getFontSize(14),
+              color: appTheme.gray700,
             ),
           ),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+            style: AppTextStyles.semiBold.copyWith(
+              fontSize: getFontSize(14),
               color: valueColor,
             ),
           ),
@@ -385,8 +445,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   String _formatSelectedDate(DateTime date) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
     return "${date.day} ${months[date.month - 1]}, ${date.year}";
   }
 }

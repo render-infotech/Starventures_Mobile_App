@@ -27,34 +27,31 @@ class SignInController extends GetxController {
       final loginResponse = await apiClient.login(email, password);
       print('Received loginResponse, status: ${loginResponse.status}');
 
+      // in SignInController.login(...)
       if (loginResponse.status == true) {
-        final type = loginResponse.data.user.type;
-        print('User type: $type');
+        final type = loginResponse.data.user.type?.toString().toLowerCase() ?? '';
         await secureStorage.write(key: 'auth_token', value: loginResponse.data.token);
+
         final appInit = AppInitialize();
         appInit.initProfile();
 
-        try {
-          if (type == 'employee') {
-            print('Navigating to employee home');
-
-            Get.offAllNamed(AppRoutes.homeScreenMain, arguments: {'role': 'employee'});
-          } else {
-            print('Navigating to lead home');
-            Get.offAllNamed(AppRoutes.homeScreenMain, arguments: {'role': 'lead'});
-          }
-        } catch (navError, navStack) {
-          print('Navigation error: $navError');
-          print(navStack);
-          CustomSnackbar.show(context, title: 'Navigation Error', message: navError.toString());
+        // map API type -> role argument
+        // SignInController: success branch
+        final rawType = loginResponse.data.user.type?.toString().toLowerCase() ?? '';
+        String roleArg;
+        switch (rawType) {
+          case 'manager':  roleArg = 'manager'; break;
+          case 'employee': roleArg = 'employee'; break;
+          case 'customer': roleArg = 'customer'; break;
+          case 'lead':     roleArg = 'lead';     break;
+          default:         roleArg = 'employee'; // never 'lead'
         }
+        Get.offAllNamed(AppRoutes.homeScreenMain, arguments: {'role': roleArg});
+
       } else {
-        CustomSnackbar.show(
-          context,
-          title: "Login Failed",
-          message: "Login failed please try again",
-        );
+        CustomSnackbar.show(context, title: "Login Failed", message: "Login failed please try again");
       }
+
     } catch (err, stacktrace) {
       print('Login method error: $err');
       print(stacktrace);

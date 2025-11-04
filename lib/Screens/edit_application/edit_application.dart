@@ -4,6 +4,7 @@ import '../../widgets/custom_app_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../widgets/custom_text_form_field.dart';
+import '../new_application/model/bank_model.dart';
 import 'controller/edit_application_controller.dart';
 import '../../widgets/custom_elevated_button.dart';
 
@@ -54,6 +55,19 @@ class _EditApplicationState extends State<EditApplication> {
                   margin: getMargin(top: 8, bottom: 16),
                 ),
 
+// ✅ Co-Applicant Name (ADD THIS SECTION)
+                _FieldLabel('Co-Applicant Name (Optional)'),
+                CustomTextFormField(
+                  controller: controller.coApplicantNameController,
+                  hintText: 'Enter name (comma-separated)',
+                  textInputType: TextInputType.name,
+                  contentPadding: getPadding(left: 14, right: 14, top: 14, bottom: 14),
+                  filled: true,
+                  fillColor: Colors.white,
+                  margin: getMargin(top: 8, bottom: 16),
+                ),
+
+                // Phone Number
                 // Phone Number
                 _FieldLabel('Phone Number'),
                 CustomTextFormField(
@@ -63,7 +77,7 @@ class _EditApplicationState extends State<EditApplication> {
                   validator: controller.validatePhone,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10),
+                    LengthLimitingTextInputFormatter(13), // ✅ Changed from 10 to 12
                   ],
                   contentPadding: getPadding(left: 14, right: 14, top: 14, bottom: 14),
                   filled: true,
@@ -100,7 +114,240 @@ class _EditApplicationState extends State<EditApplication> {
                   fillColor: Colors.white,
                   margin: getMargin(top: 8, bottom: 16),
                 ),
+                // ✅ Bank Dropdown (NEW - Add this section)
+                _FieldLabel('Select Bank'),
+                Obx(() {
+                  return Container(
+                    margin: getMargin(top: 8, bottom: 16),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: AppRadii.lg,
+                      border: Border.all(color: appTheme.blueGray10001, width: 1),
+                    ),
+                    padding: getPadding(left: 10, right: 10),
+                    child: controller.bankController.isLoading.value
+                        ? Padding(
+                      padding: getPadding(all: 14),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(appTheme.navyBlue),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Loading banks...',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                        : DropdownButtonHideUnderline(
+                      child: DropdownButton<BankModel>(
+                        dropdownColor: appTheme.whiteA700,
+                        isExpanded: true,
+                        hint: Text(
+                          'Select bank',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.black45,
+                          ),
+                        ),
+                        value: controller.bankController.selectedBank.value,
+                        items: controller.bankController.banks
+                            .map(
+                              (bank) => DropdownMenuItem<BankModel>(
+                            value: bank,
+                            child: Row(
+                              children: [
+                                // Bank logo
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Image.network(
+                                    bank.bankLogo,
+                                    width: 30,
+                                    height: 30,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(
+                                        Icons.account_balance,
+                                        color: appTheme.navyBlue,
+                                        size: 24,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    bank.name,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Colors.black87,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                            .toList(),
+                        onChanged: (BankModel? value) {
+                          controller.bankController.selectBank(value);
+                        },
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      ),
+                    ),
+                  );
+                }),
+// ✅ Agent Dropdown (NEW)
+                // Replace the Agent dropdown section with this:
 
+// ✅ Agent Dropdown (Conditional - Hide for customer and agent roles)
+                if (controller.shouldShowAgentDropdown) ...[
+                  _FieldLabel('Select Agent'),
+                  Obx(() => Container(
+                    margin: getMargin(top: 8, bottom: 16),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: AppRadii.lg,
+                      border: Border.all(color: appTheme.blueGray10001, width: 1),
+                    ),
+                    padding: getPadding(left: 10, right: 10),
+                    child: controller.agentsController.isLoading.value
+                        ? Padding(
+                      padding: getPadding(all: 14),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(appTheme.navyBlue),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Loading agents...',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                        : DropdownButtonHideUnderline(
+                      child: DropdownButton(
+                        dropdownColor: appTheme.whiteA700,
+                        isExpanded: true,
+                        hint: Text(
+                          'Select agent',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.black45,
+                          ),
+                        ),
+                        value: controller.agentsController.selectedAgent.value,
+                        items: controller.agentsController.agents
+                            .map(
+                              (agent) => DropdownMenuItem(
+                            value: agent,
+                            child: Text(
+                              agent.name,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                            .toList(),
+                        onChanged: (value) {
+                          controller.agentsController.selectAgent(value);
+                        },
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      ),
+                    ),
+                  )),
+                ],
+
+// ✅ Employee Dropdown (Conditional - Hide for customer, agent, and employee roles)
+                if (controller.shouldShowEmployeeDropdown) ...[
+                  _FieldLabel('Assign To Employee'),
+                  Obx(() => Container(
+                    margin: getMargin(top: 8, bottom: 16),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: AppRadii.lg,
+                      border: Border.all(color: appTheme.blueGray10001, width: 1),
+                    ),
+                    padding: getPadding(left: 10, right: 10),
+                    child: controller.employeeController.isLoading.value
+                        ? Padding(
+                      padding: getPadding(all: 14),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(appTheme.navyBlue),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Loading employees...',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                        : DropdownButtonHideUnderline(
+                      child: DropdownButton(
+                        dropdownColor: appTheme.whiteA700,
+                        isExpanded: true,
+                        hint: Text(
+                          'Select employee',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.black45,
+                          ),
+                        ),
+                        value: controller.employeeController.selectedEmployee.value,
+                        items: controller.employeeController.employees
+                            .map(
+                              (employee) => DropdownMenuItem(
+                            value: employee,
+                            child: Text(
+                              employee.name,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                            .toList(),
+                        onChanged: (value) {
+                          controller.employeeController.selectEmployee(value);
+                        },
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      ),
+                    ),
+                  )),
+                ],
+
+                // Loan Type Drop
                 // Loan Type Dropdown
                 _FieldLabel('Loan Type'),
                 Obx(() => Container(
@@ -141,45 +388,51 @@ class _EditApplicationState extends State<EditApplication> {
                   ),
                 )),
 
+                // Application Status - Read-only for Customer
                 // Application Status Dropdown
-                _FieldLabel('Application Status'),
-                Obx(() => Container(
-                  margin: getMargin(top: 8, bottom: 16),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: AppRadii.lg,
-                    border: Border.all(color: appTheme.blueGray10001, width: 1),
-                  ),
-                  padding: getPadding(left: 10, right: 10),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton(
-                      isExpanded: true,
-                      hint: Text(
-                        'Select application status',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.black45,
-                        ),
+// ✅ Only show for non-customer and non-agent roles
+                if (!(controller.isCustomer || controller.isAgent)) ...[
+                  _FieldLabel('Application Status'),
+                  Obx(() {
+                    return Container(
+                      margin: getMargin(top: 8, bottom: 16),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: AppRadii.lg,
+                        border: Border.all(color: appTheme.blueGray10001, width: 1),
                       ),
-                      value: controller.applicationStatusController.selectedApplicationStatus.value,
-                      items: controller.applicationStatusController.applicationStatuses.map((status) {
-                        return DropdownMenuItem(
-                          value: status,
-                          child: Text(
-                            status.name,
+                      padding: getPadding(left: 10, right: 10),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton(
+                          isExpanded: true,
+                          hint: Text(
+                            'Select application status',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.black87,
+                              color: Colors.black45,
                             ),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        controller.applicationStatusController.selectApplicationStatus(value);
-                      },
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                    ),
-                  ),
-                )),
+                          value: controller.applicationStatusController.selectedApplicationStatus.value,
+                          items: controller.applicationStatusController.applicationStatuses.map((status) {
+                            return DropdownMenuItem(
+                              value: status,
+                              child: Text(
+                                status.name,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            controller.applicationStatusController.selectApplicationStatus(value);
+                          },
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
 
                 // Monthly Income
                 _FieldLabel('Monthly Income'),
@@ -437,7 +690,7 @@ class _EditApplicationState extends State<EditApplication> {
                     shape: RoundedRectangleBorder(borderRadius: AppRadii.lg),
                     backgroundColor: controller.isSubmitting.value
                         ? Colors.grey
-                        : appTheme.navyBlue,
+                        : appTheme.theme2,
                     foregroundColor: Colors.white,
                   ),
                   buttonTextStyle: Theme.of(context).textTheme.titleSmall?.copyWith(

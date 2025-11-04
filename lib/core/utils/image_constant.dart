@@ -10,4 +10,8 @@ class ImageConstant {
   static String profile = 'assets/svg/profile.svg';
   static String documents = 'assets/svg/documents.svg';
   static String logout = 'assets/svg/logout.svg';
+  static String apply_loan = 'assets/svg/apply_loan.svg';
+  static String calci = 'assets/svg/calculator.svg';
+
+
 }

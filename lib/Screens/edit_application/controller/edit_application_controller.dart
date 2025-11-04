@@ -6,6 +6,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
 import 'dart:io';
 import '../../../core/data/api_client/api_client.dart';
+import '../../../widgets/success_dialog.dart';
+import '../../new_application/controller/agents_controller.dart';
+import '../../new_application/controller/bank_controller.dart';
+import '../../new_application/controller/employee_controller.dart';
+import '../../profile/controller/profile_controller.dart';
 import '../model/edit_application_model.dart';
 import '../../application_detail/model/application_detail_model.dart';
 import '../../new_application/controller/application_type_controller.dart';
@@ -19,21 +24,29 @@ class EditApplicationController extends GetxController {
 
   // Text controllers
   final nameController = TextEditingController();
+  final coApplicantNameController = TextEditingController(); // ✅ ADD THIS
+
   final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final amountController = TextEditingController();
   final incomeController = TextEditingController();
   final notesController = TextEditingController();
 
-  // Controllers for dropdowns
+  // Controllers for dropdowns - ✅ Non-nullable with late
   late ApplicationTypeController applicationTypeController;
   late ApplicationStatusController applicationStatusController;
+  late BankController bankController;
+  late AgentsController agentsController;
+  late EmployeeController employeeController;
+  // ✅ Add ProfileController to get user role
+  final ProfileController profileController = Get.find<ProfileController>();
 
   // Observable variables
   var isLoading = false.obs;
   var isSubmitting = false.obs;
   var errorMessage = ''.obs;
   var applicationId = ''.obs;
+  var bankId = Rx<int?>(null);
 
   // File uploads with filenames
   var aadhaarFile = Rx<File?>(null);
@@ -48,27 +61,62 @@ class EditApplicationController extends GetxController {
   var bankStatementFileName = Rx<String?>(null);
 
   final ImagePicker _picker = ImagePicker();
+  // ✅ Add helper methods to check user role
+  bool get isCustomer => profileController.role.value.toLowerCase() == 'customer';
+  bool get isAgent => profileController.role.value.toLowerCase() == 'agent';
+  bool get isEmployee => profileController.role.value.toLowerCase() == 'employee';
+
+  // ✅ Determine if dropdowns should be shown
+  bool get shouldShowAgentDropdown => !isCustomer && !isAgent;
+  bool get shouldShowEmployeeDropdown => !isCustomer && !isAgent && !isEmployee;
 
   @override
   void onInit() {
     super.onInit();
 
-    // Initialize dropdown controllers
+    // ✅ Initialize all controllers immediately
     applicationTypeController = Get.put(ApplicationTypeController(), tag: 'edit_app_type');
     applicationStatusController = Get.put(ApplicationStatusController(), tag: 'edit_app_status');
+    bankController = Get.put(BankController(), tag: 'edit_bank');
+    agentsController = Get.put(AgentsController(), tag: 'edit_agents');
+    employeeController = Get.put(EmployeeController(), tag: 'edit_employee');
 
     // Get application ID from arguments
     final args = Get.arguments;
     if (args != null && args['applicationId'] != null) {
       applicationId.value = args['applicationId'];
-      fetchAndPopulateData();
+      _initializeAndFetch();
+    }
+  }
+
+  // ✅ Wait for all controllers to be ready
+  Future<void> _initializeAndFetch() async {
+    try {
+      isLoading(true);
+
+      // Wait for all controllers to fetch their data
+      await Future.wait([
+        applicationTypeController.fetchApplicationTypes(),
+        applicationStatusController.fetchApplicationStatuses(),
+        bankController.fetchBanks(),
+        agentsController.fetchAgents(),
+        employeeController.fetchEmployees(),
+      ]);
+
+      // Now that all data is loaded, fetch and populate the form
+      await fetchAndPopulateData();
+
+    } catch (e) {
+      print('❌ Error initializing controllers: $e');
+      errorMessage('Failed to initialize form data: ${e.toString()}');
+    } finally {
+      isLoading(false);
     }
   }
 
   // Fetch application detail and populate form
   Future<void> fetchAndPopulateData() async {
     try {
-      isLoading(true);
       errorMessage('');
 
       final response = await _apiClient.fetchApplicationDetail(applicationId.value);
@@ -82,6 +130,42 @@ class EditApplicationController extends GetxController {
       amountController.text = detail.loanAmount.toString() == '0.0' ? '' : detail.loanAmount.toStringAsFixed(0);
       incomeController.text = detail.monthlyIncome.toString() == '0.0' ? '' : detail.monthlyIncome.toStringAsFixed(0);
       notesController.text = detail.notes ?? '';
+      coApplicantNameController.text = detail.coApplicantName ?? ''; // ✅ ADD THIS
+
+      // ✅ Set selected bank
+      if (detail.bank != null && bankController.banks.isNotEmpty) {
+        final matchingBank = bankController.banks.firstWhereOrNull(
+              (bank) => bank.id == detail.bank!.id,
+        );
+        if (matchingBank != null) {
+          bankController.selectBank(matchingBank);
+        }
+      }
+
+      // Store bank_id
+      if (detail.bank != null) {
+        bankId.value = detail.bank!.id;
+      }
+
+      // ✅ Set selected agent
+      if (detail.agentAssigned != null && agentsController.agents.isNotEmpty) {
+        final matchingAgent = agentsController.agents.firstWhereOrNull(
+              (agent) => agent.id == detail.agentAssigned!.id,
+        );
+        if (matchingAgent != null) {
+          agentsController.selectAgent(matchingAgent);
+        }
+      }
+
+      // ✅ Set selected employee
+      if (detail.assignedTo != null && employeeController.employees.isNotEmpty) {
+        final matchingEmployee = employeeController.employees.firstWhereOrNull(
+              (employee) => employee.id == detail.assignedTo!.id,
+        );
+        if (matchingEmployee != null) {
+          employeeController.selectEmployee(matchingEmployee);
+        }
+      }
 
       // Set existing file names if available
       if (detail.aadhaarFileUrl != null && detail.aadhaarFileUrl!.isNotEmpty) {
@@ -97,7 +181,7 @@ class EditApplicationController extends GetxController {
         bankStatementFileName.value = 'Current Bank Statement';
       }
 
-      // Set selected loan type based on existing data
+      // Set selected loan type
       if (detail.loanType.isNotEmpty && applicationTypeController.applicationTypes.isNotEmpty) {
         final matchingType = applicationTypeController.applicationTypes.firstWhereOrNull(
               (type) => type.name.toLowerCase() == detail.loanType.toLowerCase(),
@@ -107,7 +191,7 @@ class EditApplicationController extends GetxController {
         }
       }
 
-      // Set selected status based on existing data
+      // Set selected status
       if (detail.status.isNotEmpty && applicationStatusController.applicationStatuses.isNotEmpty) {
         final matchingStatus = applicationStatusController.applicationStatuses.firstWhereOrNull(
               (status) => status.name.toLowerCase() == detail.status.toLowerCase(),
@@ -125,8 +209,100 @@ class EditApplicationController extends GetxController {
         backgroundColor: Colors.red.shade100,
         colorText: Colors.red.shade800,
       );
-    } finally {
-      isLoading(false);
+    }
+  }
+
+  // Submit form
+  Future<void> submitEditApplication() async {
+    if (!formKey.currentState!.validate()) {
+      Get.snackbar(
+        'Validation Error',
+        'Please fix the errors in the form',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade800,
+      );
+      return;
+    }
+
+    if (applicationTypeController.selectedApplicationType.value == null) {
+      Get.snackbar(
+        'Validation Error',
+        'Please select a loan type',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade800,
+      );
+      return;
+    }
+
+    if (bankController.selectedBank.value == null) {
+      Get.snackbar(
+        'Validation Error',
+        'Please select a bank',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade800,
+      );
+      return;
+    }
+
+    if (applicationStatusController.selectedApplicationStatus.value == null) {
+      Get.snackbar(
+        'Validation Error',
+        'Please select an application status',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade800,
+      );
+      return;
+    }
+
+    try {
+      isSubmitting(true);
+      errorMessage('');
+
+      final editModel = EditApplicationModel(
+        customerName: nameController.text.trim(),
+        coApplicantName: coApplicantNameController.text.trim().isNotEmpty
+            ? coApplicantNameController.text.trim()
+            : null, // ✅ ADD THIS
+        phone: phoneController.text.trim(),
+        email: emailController.text.trim(),
+        loanAmount: double.parse(amountController.text.trim()),
+        loanTypeId: applicationTypeController.getSelectedApplicationTypeId(),
+        statusId: applicationStatusController.getSelectedApplicationStatusId(),
+        bankId: bankController.selectedBank.value!.id,
+        agentId: agentsController.getSelectedAgentId(),
+        employeeId: employeeController.getSelectedEmployeeId(),
+        monthlyIncome: double.parse(incomeController.text.trim()),
+        notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+        aadhaarFile: aadhaarFile.value,
+        panCardFile: panCardFile.value,
+        payslipFile: payslipFile.value,
+        bankStatementFile: bankStatementFile.value,
+      );
+
+      final response = await _apiClient.editApplication(applicationId.value, editModel);
+
+      if (response.success) {
+        isSubmitting(false);
+
+        showSuccessDialog(
+          title: 'Application Updated!',
+          message: 'The application has been successfully updated with all the new information.',
+          onClose: () {
+            Get.back(result: true);
+          },
+        );
+      } else {
+        throw Exception(response.message);
+      }
+    } catch (e) {
+      isSubmitting(false);
+      errorMessage('Failed to update application: ${e.toString()}');
+      Get.snackbar(
+        'Error',
+        'Failed to update application: ${e.toString()}',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade800,
+      );
     }
   }
 
@@ -217,7 +393,6 @@ class EditApplicationController extends GetxController {
     }
   }
 
-  // Get file icon based on file type
   IconData getFileIcon(String? fileName) {
     if (fileName == null) return Icons.upload_file;
 
@@ -234,7 +409,6 @@ class EditApplicationController extends GetxController {
     }
   }
 
-  // Get file type text for display
   String getFileTypeText(String? fileName) {
     if (fileName == null) return '';
 
@@ -251,7 +425,6 @@ class EditApplicationController extends GetxController {
     }
   }
 
-  // Remove document
   void removeDocument(String documentType) {
     switch (documentType) {
       case 'aadhaar':
@@ -273,7 +446,6 @@ class EditApplicationController extends GetxController {
     }
   }
 
-  // Validate form fields
   String? validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Customer name is required';
@@ -286,13 +458,17 @@ class EditApplicationController extends GetxController {
 
   String? validatePhone(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Phone number is required';
+      return 'Please enter phone number';
     }
-    if (value.trim().length != 10) {
-      return 'Phone number must be 10 digits';
+    // Remove any non-digit characters for validation
+    final cleanedPhone = value.replaceAll(RegExp(r'[^\d]'), '');
+
+    if (cleanedPhone.length != 10 && cleanedPhone.length != 12) {
+      return 'Phone number must be 10 or 12 digits';
     }
     return null;
   }
+
 
   String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
@@ -326,93 +502,11 @@ class EditApplicationController extends GetxController {
     return null;
   }
 
-  // Submit form
-  Future<void> submitEditApplication() async {
-    if (!formKey.currentState!.validate()) {
-      Get.snackbar(
-        'Validation Error',
-        'Please fix the errors in the form',
-        backgroundColor: Colors.red.shade100,
-        colorText: Colors.red.shade800,
-      );
-      return;
-    }
-
-    if (applicationTypeController.selectedApplicationType.value == null) {
-      Get.snackbar(
-        'Validation Error',
-        'Please select a loan type',
-        backgroundColor: Colors.red.shade100,
-        colorText: Colors.red.shade800,
-      );
-      return;
-    }
-
-    if (applicationStatusController.selectedApplicationStatus.value == null) {
-      Get.snackbar(
-        'Validation Error',
-        'Please select an application status',
-        backgroundColor: Colors.red.shade100,
-        colorText: Colors.red.shade800,
-      );
-      return;
-    }
-
-    try {
-      isSubmitting(true);
-      errorMessage('');
-
-      // Create edit model with IDs
-      final editModel = EditApplicationModel(
-        customerName: nameController.text.trim(),
-        phone: phoneController.text.trim(),
-        email: emailController.text.trim(),
-        loanAmount: double.parse(amountController.text.trim()),
-        loanTypeId: applicationTypeController.getSelectedApplicationTypeId(),
-        statusId: applicationStatusController.getSelectedApplicationStatusId(),
-      //
-        //  agentId: 2, // You might need to get this dynamically
-        monthlyIncome: double.parse(incomeController.text.trim()),
-        notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
-        aadhaarFile: aadhaarFile.value,
-        panCardFile: panCardFile.value,
-        payslipFile: payslipFile.value,
-        bankStatementFile: bankStatementFile.value,
-      );
-
-      // Call API to update application
-      final response = await _apiClient.editApplication(applicationId.value, editModel);
-
-      if (response.success) {
-        Get.snackbar(
-          'Success',
-          'Application updated successfully',
-          backgroundColor: Colors.green.shade100,
-          colorText: Colors.green.shade800,
-        );
-
-        // Navigate back to application detail
-        Get.back(result: true);
-      } else {
-        throw Exception(response.message);
-      }
-
-    } catch (e) {
-      errorMessage('Failed to update application: ${e.toString()}');
-      Get.snackbar(
-        'Error',
-        'Failed to update application: ${e.toString()}',
-        backgroundColor: Colors.red.shade100,
-        colorText: Colors.red.shade800,
-      );
-    } finally {
-      isSubmitting(false);
-    }
-  }
-
   @override
   void onClose() {
     nameController.dispose();
+    coApplicantNameController.dispose(); // ✅ ADD THIS
+
     phoneController.dispose();
     emailController.dispose();
     amountController.dispose();

@@ -1,8 +1,4 @@
-//OTP VERIDIATIONSCREEEN
-
 import 'package:flutter/material.dart';
-
-
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
 import 'package:otp_autofill/otp_autofill.dart';
@@ -12,23 +8,26 @@ import 'package:starcapitalventures/widgets/custom_elevated_button.dart';
 import '../../core/utils/styles/AppTextStyles.dart';
 import 'controller/login_controller.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
+class OtpVerificationScreen2 extends StatefulWidget {
   final String phoneNumber;
 
-  const OtpVerificationScreen({super.key, required this.phoneNumber});
+  const OtpVerificationScreen2({super.key, required this.phoneNumber});
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  State<OtpVerificationScreen2> createState() => _OtpVerificationScreen2State();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final SignInController _controller = Get.find<SignInController>();
+class _OtpVerificationScreen2State extends State<OtpVerificationScreen2> {
+  // ✅ FIXED: Use Get.put to ensure controller exists
+  late final SignInController _controller;
   final TextEditingController _otpController = TextEditingController();
   late OTPTextEditController _otpTextController;
 
   @override
   void initState() {
     super.initState();
+    // ✅ Initialize controller if not exists, or get existing one
+    _controller = Get.put(SignInController());
     _initOtpListener();
   }
 
@@ -60,7 +59,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   void _handleResendOtp() {
-    _controller.sendOtp(widget.phoneNumber, context);
+    _controller.resendOtpforotpverification2(widget.phoneNumber, context);
   }
 
   @override
@@ -120,8 +119,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   height: 220,
                   fit: BoxFit.contain,
                 ),
-                SizedBox(height: 40),
-                Text(
+                const SizedBox(height: 40),
+                const Text(
                   'Verify OTP',
                   style: TextStyle(
                     color: Colors.white,
@@ -129,24 +128,24 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 12),
-                Text(
+                const SizedBox(height: 12),
+                const Text(
                   'Enter the 6-digit code sent to',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   widget.phoneNumber,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 40),
+                const SizedBox(height: 40),
                 Pinput(
                   controller: _otpController,
                   length: 6,
@@ -159,7 +158,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     _handleVerifyOtp();
                   },
                 ),
-                SizedBox(height: 30),
+                const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
                   height: getVerticalSize(45),
@@ -194,10 +193,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 TextButton(
                   onPressed: _handleResendOtp,
-                  child: Text(
+                  child: const Text(
                     'Resend OTP',
                     style: TextStyle(
                       color: Colors.white,
@@ -207,12 +206,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 TextButton(
                   onPressed: () => Get.back(),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+                    children: const [
                       Icon(Icons.arrow_back, color: Colors.white, size: 16),
                       SizedBox(width: 4),
                       Text(

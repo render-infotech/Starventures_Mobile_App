@@ -30,13 +30,17 @@ class ApplicationHistoryController extends GetxController {
 
   // Method to update application history
   Future<bool> updateApplicationHistory(String applicationId) async {
+    print('🔵 updateApplicationHistory called for: $applicationId');
+
     if (actionController.text.trim().isEmpty) {
       errorMessage('Action cannot be empty');
+      print('❌ Action is empty');
       return false;
     }
 
     if (remarksController.text.trim().isEmpty) {
       errorMessage('Remarks cannot be empty');
+      print('❌ Remarks is empty');
       return false;
     }
 
@@ -49,23 +53,29 @@ class ApplicationHistoryController extends GetxController {
         remarks: remarksController.text.trim(),
       );
 
+      print('🔵 Sending request: action="${request.action}", remarks="${request.remarks}"');
+
       final response = await _apiClient.postApplicationHistory(applicationId, request);
+
+      print('🔵 Response received: success=${response.success}, message="${response.message}"');
 
       if (response.success) {
         // Clear form after successful update
         clearForm();
-
+        print('✅ Update successful, form cleared');
         return true;
       } else {
         errorMessage(response.message);
+        print('❌ Update failed: ${response.message}');
         return false;
       }
     } catch (e) {
       errorMessage('Failed to update application history: $e');
-      print('Error updating application history: $e');
+      print('❌ Error updating application history: $e');
       return false;
     } finally {
       isLoading(false);
+      print('🔵 isLoading set to false');
     }
   }
 

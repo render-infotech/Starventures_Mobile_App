@@ -15,3 +15,4 @@ export 'package:starcapitalventures/core/utils/image_constant.dart';
 export 'package:starcapitalventures/core/utils/styles/custom_border_radius.dart';
 export 'package:starcapitalventures/core/utils/styles/size_utils.dart';
 export  'package:starcapitalventures/core/utils/styles/AppTextStyles.dart';
+export 'package:starcapitalventures/Screens/emi_calculator/emi_calculator.dart';

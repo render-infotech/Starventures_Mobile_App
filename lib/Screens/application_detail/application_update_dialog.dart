@@ -4,14 +4,7 @@ import 'package:get/get.dart';
 import 'package:starcapitalventures/app_export/app_export.dart';
 import '../../core/utils/custom_snackbar.dart';
 import 'application_detail_controller/application_history_controller.dart';
-
-// lib/widgets/application_update_dialog.dart
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:starcapitalventures/app_export/app_export.dart';
-import '../../core/utils/custom_snackbar.dart';
-import 'application_detail_controller/application_history_controller.dart';
-import 'application_detail_controller/action_history_controller.dart'; // Add this import
+import 'application_detail_controller/action_history_controller.dart';
 
 class ApplicationUpdateDialog extends StatelessWidget {
   final String applicationId;
@@ -65,7 +58,10 @@ class ApplicationUpdateDialog extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: () => Get.back(),
+                  onPressed: () {
+                    controller.resetForm();
+                    Navigator.of(context).pop();
+                  },
                   icon: const Icon(Icons.close),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -110,7 +106,7 @@ class ApplicationUpdateDialog extends StatelessWidget {
                   borderRadius: AppRadii.sm,
                   borderSide: BorderSide(color: appTheme.theme),
                 ),
-                contentPadding: getPadding(left: 16,top: 12,bottom: 12,right: 16),
+                contentPadding: getPadding(left: 16, top: 12, bottom: 12, right: 16),
               ),
             ),
 
@@ -144,7 +140,7 @@ class ApplicationUpdateDialog extends StatelessWidget {
                   borderRadius: AppRadii.sm,
                   borderSide: BorderSide(color: appTheme.theme),
                 ),
-                contentPadding: getPadding(left: 16,top: 12,bottom: 12,right: 16),
+                contentPadding: getPadding(left: 16, top: 12, bottom: 12, right: 16),
               ),
             ),
 
@@ -173,7 +169,7 @@ class ApplicationUpdateDialog extends StatelessWidget {
                 TextButton(
                   onPressed: () {
                     controller.resetForm();
-                    Get.back();
+                    Navigator.of(context).pop();
                   },
                   child: Text(
                     'Cancel',
@@ -190,46 +186,71 @@ class ApplicationUpdateDialog extends StatelessWidget {
                   onPressed: controller.isLoading.value
                       ? null
                       : () async {
+                    print('🔵 Update button clicked');
+
                     final success = await controller.updateApplicationHistory(applicationId);
 
-                    if (success) {
-                      // Show immediate success message
-                      CustomSnackbar.show(
-                        context,
-                        title: "Success",
-                        message: "Application status updated successfully",
-                      );
+                    print('🔵 Update result: $success');
 
-                      // IMMEDIATELY REFRESH ACTION HISTORY CONTROLLER
+                    if (success) {
+                      print('✅ Update successful, starting refresh...');
+
+                      // ✅ IMMEDIATELY fetch updated action history BEFORE closing dialog
                       try {
                         // Try to find the controller with tag first (more specific)
                         final actionHistoryController = Get.find<ActionHistoryController>(tag: applicationId);
-                        await actionHistoryController.refreshActionHistory(applicationId);
-                        print('✅ ActionHistoryController refreshed with tag: $applicationId');
+                        print('🔵 Found ActionHistoryController with tag: $applicationId');
+                        await actionHistoryController.fetchActionHistory(applicationId);
+                        print('✅ ActionHistoryController fetched with tag: $applicationId');
                       } catch (e) {
+                        print('⚠️ Could not find ActionHistoryController with tag: $e');
                         // If tagged controller not found, try without tag
                         try {
                           final actionHistoryController = Get.find<ActionHistoryController>();
-                          await actionHistoryController.refreshActionHistory(applicationId);
-                          print('✅ ActionHistoryController refreshed without tag');
+                          print('🔵 Found ActionHistoryController without tag');
+                          await actionHistoryController.fetchActionHistory(applicationId);
+                          print('✅ ActionHistoryController fetched without tag');
                         } catch (e2) {
                           print('⚠️ Could not find ActionHistoryController: $e2');
                         }
                       }
 
-                      // Call the parent success callback
-                      if (onSuccess != null) {
-                        onSuccess!();
+                      print('🔵 Attempting to close dialog...');
+
+                      // ✅ Close dialog after fetching
+                      if (context.mounted) {
+                        Navigator.of(context).pop(true);
+                        print('✅ Dialog closed successfully');
+                      } else {
+                        print('⚠️ Context not mounted, cannot close dialog');
                       }
 
-                      // Close the dialog
-                      Get.back(result: true);
+                      // Small delay before showing snackbar
+                      await Future.delayed(const Duration(milliseconds: 100));
+
+                      // ✅ Show success snackbar
+                      if (context.mounted) {
+                        CustomSnackbar.show(
+                          context,
+                          title: "Success",
+                          message: "Application status updated successfully",
+                        );
+                        print('✅ Snackbar shown');
+                      }
+
+                      // ✅ Call parent success callback to refresh application detail
+                      if (onSuccess != null) {
+                        onSuccess!();
+                        print('✅ onSuccess callback executed');
+                      }
+                    } else {
+                      print('❌ Update failed');
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: appTheme.theme,
                     foregroundColor: Colors.white,
-                    padding: getPadding(left: 20,right: 20,top: 12,bottom: 12),
+                    padding: getPadding(left: 20, right: 20, top: 12, bottom: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: AppRadii.sm,
                     ),
