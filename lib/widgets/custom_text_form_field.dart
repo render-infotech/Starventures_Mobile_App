@@ -87,7 +87,6 @@
           textSelectionTheme: TextSelectionThemeData(
             cursorColor: appTheme.theme,
             selectionColor: appTheme.theme.withOpacity(0.4),
-            selectionHandleColor: appTheme.theme,
           ),
         ),
         child: TextFormField(

@@ -137,13 +137,14 @@ class ApiClient {
     throw Exception('Failed to load leave types (${resp.statusCode})');
   }
   // Fetch HTML content for payslip
-  Future<String> fetchPayslipHtml(String employeeId, String yearMonth) async {
+  Future<String> fetchPayslipHtml(String yearMonth) async {
     final token = await getAuthToken();
     if (token == null || token.isEmpty) {
       throw Exception('No auth token found');
     }
 
-    final url = '${ApiConstants.baseurl}/api/v1/payslip/html/$employeeId-$yearMonth';
+    final url = ApiConstants.payslip(yearMonth);
+
     final response = await http.get(
       Uri.parse(url),
       headers: {
@@ -271,22 +272,46 @@ class ApiClient {
     }
     throw Exception('Monthly attendance fetch failed (${resp.statusCode})');
   }
-  Future<List<Map<String, dynamic>>> getMonthlyLeaves({required int month, required int year}) async {
+  Future<List<Map<String, dynamic>>> getMonthlyLeaves({
+    required int month,
+    required int year,
+  }) async {
     final token = await getAuthToken();
-    final uri = Uri.parse('${ApiConstants.attendanceMonthlyLeaves}?month=$month&year=$year');
+    final uri = Uri.parse(
+      '${ApiConstants.attendanceMonthlyLeaves}?month=$month&year=$year',
+    );
+
     final resp = await http.get(
       uri,
       headers: {
         'Accept': 'application/json',
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
       },
     );
+
+    // 🔹 PRINT STATUS CODE
+    debugPrint('MonthlyLeaves STATUS: ${resp.statusCode}');
+
+    // 🔹 PRINT FULL RAW RESPONSE
+    debugPrint('MonthlyLeaves RESPONSE: ${resp.body}');
+
     _checkTokenExpiration(resp.statusCode, resp.body);
+
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final decoded = json.decode(resp.body) as Map<String, dynamic>;
+
+      // 🔹 PRINT DECODED JSON
+      debugPrint('MonthlyLeaves DECODED: $decoded');
+
       final List data = (decoded['data'] ?? []) as List;
+
+      // 🔹 PRINT DATA ARRAY ONLY
+      debugPrint('MonthlyLeaves DATA: $data');
+
       return data.cast<Map<String, dynamic>>();
     }
+
     throw Exception('Failed to load monthly leaves (${resp.statusCode})');
   }
   Future<LoginResponse> login(String email, String password) async {

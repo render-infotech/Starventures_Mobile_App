@@ -25,24 +25,20 @@ class DocumentsController extends GetxController {
     super.onInit();
     fetchDocuments();
   }
-
-  Future<void> viewSalarySlip() async {
+  Future<void> fetchSalarySlip(int year, int month) async {
     try {
-      LoadingService.to.show(message: 'Loading Salary Slip...');
+      LoadingService.to.show(message: "Loading Salary Slip...");
 
-      final now = DateTime.now();
-      final yearMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-      final employeeId = 'employee-id'; // Replace with actual employee ID from user profile
+      final yearMonth = "$year-${month.toString().padLeft(2, '0')}";
 
-      final htmlContent = await _apiClient.fetchPayslipHtml(employeeId, yearMonth);
+      final htmlContent = await _apiClient.fetchPayslipHtml(yearMonth);
 
       LoadingService.to.hide();
 
-      // Check if response contains error
       if (_isErrorResponse(htmlContent)) {
         _showDocumentNotFoundDialog(
-          'Salary Slip Not Available',
-          'Your salary slip for $yearMonth is currently unavailable. Please check back later or contact HR for assistance.',
+          "Salary Slip Not Available",
+          "Salary slip for $yearMonth is not available.",
           Icons.receipt_long_outlined,
         );
         return;
@@ -50,17 +46,22 @@ class DocumentsController extends GetxController {
 
       Get.to(() => HtmlViewerScreen(
         htmlContent: htmlContent,
-        documentTitle: 'Salary Slip - $yearMonth',
+        documentTitle: "Salary Slip - $yearMonth",
       ));
+
     } catch (e) {
       LoadingService.to.hide();
-      print('[Documents] ❌ Error loading salary slip: $e');
+      print("❌ Error salary slip: $e");
       _showDocumentNotFoundDialog(
-        'Salary Slip Not Available',
-        'Your salary slip is currently unavailable. Please check back later or contact HR for assistance.',
+        "Salary Slip Not Available",
+        "Please try again later.",
         Icons.error_outline,
       );
     }
+  }
+
+  Future<void> viewSalarySlip() async {
+    await selectYearMonthAndFetchSlip();
   }
 
   // Fetch and view Joining Letter
@@ -95,6 +96,79 @@ class DocumentsController extends GetxController {
         Icons.error_outline,
       );
     }
+  }
+  Future<void> selectYearMonthAndFetchSlip() async {
+    final now = DateTime.now();
+
+    int selectedYear = now.year;
+    int selectedMonth = now.month;
+
+    await Get.dialog(
+      Dialog(
+        backgroundColor: appTheme.whiteA700,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Select Year & Month",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // YEAR DROPDOWN
+              DropdownButtonFormField<int>(
+                value: selectedYear,
+                decoration: const InputDecoration(labelText: "Year"),
+                items: List.generate(
+                  6,
+                      (i) => DropdownMenuItem(
+                    value: now.year - i,
+                    child: Text((now.year - i).toString()),
+                  ),
+                ),
+                onChanged: (v) => selectedYear = v!,
+              ),
+
+              const SizedBox(height: 10),
+
+              // MONTH DROPDOWN
+              DropdownButtonFormField<int>(
+                value: selectedMonth,
+                decoration: const InputDecoration(labelText: "Month"),
+                items: List.generate(
+                  12,
+                      (i) => DropdownMenuItem(
+                    value: i + 1,
+                    child: Text("${i + 1}".padLeft(2, '0')),
+                  ),
+                ),
+                onChanged: (v) => selectedMonth = v!,
+              ),
+
+              const SizedBox(height: 20),
+
+              ElevatedButton(
+                onPressed: () {
+                  Get.back(); // close dialog
+                  fetchSalarySlip(selectedYear, selectedMonth);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: appTheme.theme2,
+                ),
+                child:  Text("View Slip",style: TextStyle(color: appTheme.whiteA700),),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
   }
 
   // Fetch and view NOC

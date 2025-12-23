@@ -98,17 +98,19 @@ class CreateApplicationController extends GetxController {
       );
 
       if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
-        final fileSize = file.lengthSync();
+        final platformFile = result.files.single;
+
+        final fileSize = platformFile.size; // ✅ SAFE (no direct file access)
+        final file = File(platformFile.path!); // Only needed for upload
 
         print('PDF file size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
 
         if (isAadhaar) {
           aadhaarFile.value = file;
-          aadhaarFileName.value = result.files.single.name;
+          aadhaarFileName.value = platformFile.name;
         } else {
           panFile.value = file;
-          panFileName.value = result.files.single.name;
+          panFileName.value = platformFile.name;
         }
       }
     } catch (e) {

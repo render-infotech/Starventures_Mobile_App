@@ -22,6 +22,7 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
   double? emi;
   double? totalInterest;
   double? totalPayment;
+  String _amountInWords = '';
 
   void _calculateEmi() {
     final p = double.tryParse(_amountController.text.replaceAll(',', '').replaceAll('₹', '').trim()) ?? 0;
@@ -153,6 +154,17 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
       tenureUnit = unit;
     });
   }
+  @override
+  void initState() {
+    super.initState();
+    _amountController.addListener(() {
+      final p = double.tryParse(_amountController.text.replaceAll(',', '').replaceAll('₹', '').trim()) ?? 0;
+      final words = _convertAmountToWords(p);
+      setState(() {
+        _amountInWords = words;
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -187,7 +199,6 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
             SizedBox(height: getVerticalSize(8)),
             CustomTextFormField(
               controller: _amountController,
-              hintText: "₹ 50,00,000",
               textInputType: TextInputType.number,
               prefix: Padding(
                 padding: EdgeInsets.only(
@@ -199,6 +210,18 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                 minHeight: getVerticalSize(24),
               ),
             ),
+
+            // Amount in words shown dynamically below amount field
+            SizedBox(height: getVerticalSize(8)),
+            Text(
+              _amountInWords,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+                fontSize: getFontSize(14),
+              ),
+            ),
+
             SizedBox(height: getVerticalSize(24)),
 
             Text("Loan Tenure",
@@ -210,7 +233,6 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                 Expanded(
                   child: CustomTextFormField(
                     controller: _tenureController,
-                    hintText: "10",
                     textInputType: TextInputType.number,
                   ),
                 ),
@@ -231,7 +253,6 @@ class _EmiCalculatorScreenState extends State<EmiCalculatorScreen> {
                 Expanded(
                   child: CustomTextFormField(
                     controller: _rateController,
-                    hintText: "9.5",
                     textInputType: TextInputType.number,
                   ),
                 ),

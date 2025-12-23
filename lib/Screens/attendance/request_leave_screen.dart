@@ -250,14 +250,14 @@ class _RequestLeaveScreenState extends State<RequestLeaveScreen> {
                 ),
               ),
               SizedBox(height: getVerticalSize(12)),
-              _LabeledField(
-                label: 'Remark',
-                child: TextFormField(
-                  controller: _remarkCtrl,
-                  maxLines: 2,
-                  decoration: _deco('Any additional note'),
-                ),
-              ),
+              // _LabeledField(
+              //   label: 'Remark',
+              //   child: TextFormField(
+              //     controller: _remarkCtrl,
+              //     maxLines: 2,
+              //     decoration: _deco('Any additional note'),
+              //   ),
+              // ),
               SizedBox(height: getVerticalSize(20)),
               SizedBox(
                 width: double.infinity,

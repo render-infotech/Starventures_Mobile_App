@@ -56,12 +56,15 @@ class _ViewLeavesScreenState extends State<ViewLeavesScreen> {
       case 'approved':
         return Colors.green;
       case 'rejected':
+      case 'reject': // 🔥 FIX for API value
         return Colors.red;
       case 'pending':
-      default:
         return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

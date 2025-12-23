@@ -20,8 +20,9 @@ class ApiConstants {
       '$baseurl/api/v1/applications/$applicationId';
   static String get customerFeedback => '$baseurl/api/v1/customer-feedback';
   // Replace the placeholder with actual endpoint pattern
-  static String payslip(String employeeId, String yearMonth) =>
-      '$baseurl/api/v1/payslip/html/$employeeId-$yearMonth';
+  static String payslip(String yearMonth) =>
+      '$baseurl/api/v1/payslip/html/$yearMonth';
+
   static String get joiningLetter=>'$baseurl/api/v1/employee/joining-letter';
   static String get noc=>'$baseurl/api/v1/employee/noc';
   static String get postDocuments =>'$baseurl/api/v1/employee/documents';
